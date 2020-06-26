@@ -1,0 +1,28 @@
+{
+  "ip": "127.0.0.1",
+  "port": "40000",
+  "tunnels": [
+    {
+      "type": "DIRECT",
+      "area": "CN",
+      "only_area_ip": true
+    },
+    {
+      "type": "SOCKS",
+      "ip": "10.235.64.49",
+      "port": 1081,
+      "area": "US",
+      "real_server_host": "fm1-2.sstr-api.xyz",
+      "whitelist": "hanime.tv"
+    },
+    {
+      "type": "SOCKS",
+      "ip": "10.235.64.49",
+      "port": 1080,
+      "area": "JP",
+      "real_server_host": "os2-2.sstr-api.xyz"
+    }
+  ],
+  "so_timeout": 10000,
+  "parallel": 16
+}

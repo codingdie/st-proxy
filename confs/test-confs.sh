@@ -1,0 +1,6 @@
+if [ "$1" != "" ]; then
+  rm -rf nat
+  rm -rf service
+  ln -s $1/nat nat
+  ln -s $1/service service
+fi

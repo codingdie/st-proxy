@@ -1,0 +1,21 @@
+{
+  "ip": "0.0.0.0",
+  "port": "40000",
+  "tunnels": [
+    {
+      "type": "DIRECT",
+      "area": "CN",
+      "only_area_ip": true
+    },
+    {
+      "type": "SOCKS",
+      "ip": "127.0.0.1",
+      "port": 1080,
+      "area": "!CN",
+      "only_area_ip": true,
+      "real_server_host": "os2-2.sstr-api.xyz"
+    }
+  ],
+  "so_timeout": 10000,
+  "parallel":16
+}

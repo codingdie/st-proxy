@@ -1,0 +1,9 @@
+#将lo0上所有目的地不在直连地址列表的流量转发到 st-proxy监听地址 127.0.0.1:40000
+#table <st-proxy-whitelist> { 8.8.8.8 }
+rdr on lo0 proto tcp from en0 to !<st-proxy-whitelist> -> 127.0.0.1 port 40000
+
+#将eth0所有目的地不在直连地址列表的流量路由到lo0上
+
+pass out quick on en0 proto tcp from any to <st-proxy-whitelist>
+
+pass out quick on en0 route-to lo0 proto tcp from any port >= 49152  to  !<st-proxy-whitelist>
