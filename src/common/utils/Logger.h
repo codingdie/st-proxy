@@ -49,7 +49,9 @@ namespace st {
 
         public:
             static thread_local uint64_t traceId;
-            enum MASK { ENDL };
+            enum MASK {
+                ENDL
+            };
             static thread_local Logger TRACE;
             static thread_local Logger DEBUG;
             static thread_local Logger INFO;
@@ -101,8 +103,7 @@ namespace st {
             void addMetric(const string name, const V value) {
                 this->props.put<V>(name, value);
             }
-            static void perf(const string id, const uint32_t cost,
-                             boost::property_tree::ptree &properties);
+            static void perf(const string id, const uint32_t cost, boost::property_tree::ptree &properties);
 
 
         private:

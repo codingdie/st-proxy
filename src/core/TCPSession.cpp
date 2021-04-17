@@ -18,7 +18,12 @@ TCPSession::TCPSession(uint64_t id, tcp::socket &sock, st::proxy::Config &config
     : id(id), begin(time::now()), clientSock(std::move(sock)), config(config),
       proxySock((io_context &) clientSock.get_executor().context()),
       upStrand((io_context &) clientSock.get_executor().context()),
-      downStrand((io_context &) clientSock.get_executor().context()) {}
+      downStrand((io_context &) clientSock.get_executor().context()) {
+    readProxyBuffer = pmalloc(bufferSize);
+    readClientBuffer = pmalloc(bufferSize);
+    writeProxyBuffer = pmalloc(bufferSize);
+    writeClientBuffer = pmalloc(bufferSize);
+}
 
 void TCPSession::start() {
     boost::system::error_code error;
@@ -379,6 +384,10 @@ void TCPSession::writeClient(const string &tag, size_t writeSize,
 TCPSession::~TCPSession() {
     Logger::traceId = id;
     Logger::INFO << "disconnect" << toString() << transmit() << END;
+     pfree(readProxyBuffer,bufferSize);
+     pfree(readClientBuffer, bufferSize);
+     pfree(writeProxyBuffer, bufferSize);
+     pfree(writeClientBuffer, bufferSize);
 }
 
 string TCPSession::toString() {

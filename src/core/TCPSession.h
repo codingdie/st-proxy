@@ -11,7 +11,7 @@ class TCPSession {
 public:
     enum STAGE { CONNECTING, CONNECTED, DETROYING, DETROYED };
 
-    static const uint32_t bufferSize = 1024;
+    static const uint32_t bufferSize = 2048;
 
     TCPSession(uint64_t id, tcp::socket &sock, st::proxy::Config &config);
 
@@ -48,10 +48,10 @@ private:
     st::proxy::Config &config;
     vector<STStreamTunnel *> targetTunnels;
     tcp::endpoint clientEnd;
-    byte readClientBuffer[bufferSize];
-    byte writeProxyBuffer[bufferSize];
-    byte writeClientBuffer[bufferSize];
-    byte readProxyBuffer[bufferSize];
+    byte *readClientBuffer;
+    byte *writeProxyBuffer;
+    byte *writeClientBuffer;
+    byte *readProxyBuffer;
     io_context::strand upStrand;
     io_context::strand downStrand;
     mutex stageLock;

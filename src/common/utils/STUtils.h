@@ -10,6 +10,7 @@
 #include "FileUtils.h"
 #include "IPUtils.h"
 #include "Logger.h"
+#include "Pool.h"
 #include "ShellUtils.h"
 #include "StringUtils.h"
 #include "TimeUtils.h"

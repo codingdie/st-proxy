@@ -63,7 +63,9 @@ ostream *Logger::getSTD() {
     }
     return stream;
 }
-bool Logger::enableUDPLogger() { return udpServerIP.length() > 0 && udpServerPort > 0; }
+bool Logger::enableUDPLogger() {
+    return udpServerIP.length() > 0 && udpServerPort > 0;
+}
 
 
 Logger &Logger::operator<<(const char *log) {
@@ -82,7 +84,8 @@ Logger &Logger::operator<<(char ch) {
     return *this;
 }
 
-Logger::Logger(string tag, uint32_t level) : tag(tag), level(level) {}
+Logger::Logger(string tag, uint32_t level) : tag(tag), level(level) {
+}
 
 Logger &Logger::operator<<(const string &string) {
     appendStr(string);
@@ -90,7 +93,9 @@ Logger &Logger::operator<<(const string &string) {
 }
 
 
-void Logger::appendStr(const string &info) { this->str.append(info).append(SPLIT); }
+void Logger::appendStr(const string &info) {
+    this->str.append(info).append(SPLIT);
+}
 
 Logger &Logger::operator<<(const unordered_set<string> &strs) {
     for (auto str : strs) {
@@ -102,23 +107,27 @@ Logger &Logger::operator<<(const unordered_set<string> &strs) {
 thread_local uint64_t Logger::traceId = 0;
 UDPLogger UDPLogger::INSTANCE;
 UDPLogger::UDPLogger() : ctx(), worker(ctx) {
-    thread th([=]() { ctx.run(); });
+    thread th([=]() {
+        ctx.run();
+    });
     th.detach();
 }
 void UDPLogger::log(const string ip, const int port, const string str) {
     ip::udp::endpoint serverEndpoint(ip::make_address_v4(ip), port);
     boost::system::error_code error;
     ip::udp::socket sc(ctx, ip::udp::endpoint(ip::udp::v4(), 0));
-    sc.async_send_to(buffer(str), serverEndpoint,
-                     [=](boost::system::error_code error, std::size_t size) {
-                         if (error) {
-                             cerr << error.message() << endl;
-                         }
-                     });
+    sc.async_send_to(buffer(str), serverEndpoint, [=](boost::system::error_code error, std::size_t size) {
+        if (error) {
+            cerr << error.message() << endl;
+        }
+    });
 }
 STDLogger STDLogger::INSTANCE;
-STDLogger::STDLogger() {}
-void STDLogger::log(const string str, ostream *st) { *st << str; }
+STDLogger::STDLogger() {
+}
+void STDLogger::log(const string str, ostream *st) {
+    *st << str;
+}
 
 APMLogger::APMLogger(const string name, const string traceId) {
     props.put<string>("name", name);
@@ -169,8 +178,7 @@ void APMLogger::doLog(boost::property_tree::ptree &properties) {
         UDPLogger::INSTANCE.log(udpServerIP, udpServerPort, str);
     }
 }
-void APMLogger::perf(const string id, const uint32_t cost,
-                     boost::property_tree::ptree &properties) {
+void APMLogger::perf(const string id, const uint32_t cost, boost::property_tree::ptree &properties) {
     boost::property_tree::ptree pt;
     pt.put<string>("name", id);
     pt.put<uint64_t>("cost", cost);

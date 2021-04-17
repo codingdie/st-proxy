@@ -5,7 +5,7 @@
 #include "utils/STUtils.h"
 #include <stdlib.h>
 
-static const vector<string> availablePaths({"./confs", "/usr/local/etc/st/proxy", "/etc/st/proxy"});
+static const vector<string> availablePaths({"../confs", "/usr/local/etc/st/proxy", "/etc/st/proxy"});
 static const string pidFile = "/var/run/st-proxy.pid";
 
 void startServer(const string &confPath) {
