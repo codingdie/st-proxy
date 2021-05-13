@@ -20,21 +20,27 @@ public:
 
     void start();
 
+    void waitStart();
+    
+    void shutdown();
+
     static ProxyServer INSTANCE;
 
 private:
+    std::atomic<uint8_t> state;
     io_context ioContext;
     thread_pool pool;
     Config &config;
     ip::tcp::acceptor *serverAcceptor;
+    boost::asio::io_context::work *ioWoker;
     void accept();
 
     bool init();
 
     bool interceptNatTraffic(bool Intercept) const;
 
-    bool addStreamTunnelToWhitelist() const;
-    bool resolveWhitelistDomain();
+    bool addNatWhitelist() const;
+    bool addTunnelWhitelist();
 };
 
 

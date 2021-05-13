@@ -12,7 +12,9 @@ static mutex rLock;
 bool AreaIpManager::isAreaIP(const string &areaReg, const uint32_t &ip) {
     vector<std::string> areas = strutils ::split(areaReg, "&&");
     for (auto &area : areas) {
-        if (!isAreaIPBase(area, ip)) { return false; }
+        if (!isAreaIPBase(area, ip)) {
+            return false;
+        }
     }
     return true;
 }
@@ -27,6 +29,9 @@ bool AreaIpManager::isAreaIPBase(const string &areaReg, const uint32_t &ip) {
     rLock.lock();
     if (INSTANCE.caches.find(areaCode) == INSTANCE.caches.end()) {
         string dataPath = st::proxy::Config::INSTANCE.baseConfDir + "/../area-ips/" + areaCode;
+        if (!st::utils::file::exit(dataPath)) {
+            dataPath = st::proxy::Config::INSTANCE.baseConfDir + "/../../area-ips/" + areaCode;
+        }
         ifstream in(dataPath);
         string line;
         vector<pair<uint32_t, uint32_t>> *ips = new vector<pair<uint32_t, uint32_t>>();
@@ -40,8 +45,7 @@ bool AreaIpManager::isAreaIPBase(const string &areaReg, const uint32_t &ip) {
                     ips->emplace_back(make_pair(beginIp, endIp));
                 }
             }
-            Logger::INFO << "load area" << areaCode << "ipRanges" << ips->size() << "from"
-                         << dataPath << END;
+            Logger::INFO << "load area" << areaCode << "ipRanges" << ips->size() << "from" << dataPath << END;
         } else {
             Logger::ERROR << areaCode << "ipRanges file not exits" << dataPath << END;
         }
@@ -53,7 +57,9 @@ bool AreaIpManager::isAreaIPBase(const string &areaReg, const uint32_t &ip) {
         auto ipRanges = iterator->second;
         for (auto it = ipRanges->begin(); it != ipRanges->end(); it++) {
             pair<uint32_t, uint32_t> &ipRange = *it;
-            if (ip <= ipRange.second && ip >= ipRange.first) { return matchNot ? false : true; }
+            if (ip <= ipRange.second && ip >= ipRange.first) {
+                return matchNot ? false : true;
+            }
         }
     }
     return matchNot ? true : false;

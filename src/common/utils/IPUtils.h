@@ -7,7 +7,7 @@ using namespace std;
 namespace st {
     namespace utils {
         namespace ipv4 {
-            static inline string ipToStr(uint32_t ip) {
+            static string ipToStr(uint32_t ip) {
                 string ipStr;
                 ipStr += to_string((ip & 0xFF000000U) >> 24U);
                 ipStr += ".";
@@ -19,7 +19,7 @@ namespace st {
                 return ipStr;
             }
 
-            static inline uint32_t strToIp(const string &ipStr) {
+            static uint32_t strToIp(const string &ipStr) {
                 uint32_t ip = 0L;
                 uint64_t lastPos = 0;
                 uint32_t num = 0;
@@ -34,7 +34,7 @@ namespace st {
             }
 
             template<typename Collection>
-            static inline string ipsToStr(Collection &ips) {
+            static string ipsToStr(const Collection &ips) {
                 string ipStr;
                 for (uint32_t ip : ips) {
                     ipStr += ipToStr(ip);

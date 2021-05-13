@@ -10,7 +10,7 @@ typedef boost::singleton_pool<CHUNCK_1024, sizeof(uint8_t) * 1024> CHUNCK_1024_P
 struct CHUNCK_2048 {};
 typedef boost::singleton_pool<CHUNCK_2048, sizeof(uint8_t) * 2048> CHUNCK_2048_POOL;
 
-static inline uint8_t *pmalloc(uint32_t size) {
+static uint8_t *pmalloc(uint32_t size) {
     if (size <= 512) {
         return (uint8_t *) CHUNCK_512_POOl::malloc();
     } else if (size <= 1024) {
@@ -19,7 +19,7 @@ static inline uint8_t *pmalloc(uint32_t size) {
         return (uint8_t *) CHUNCK_2048_POOL::malloc();
     }
 }
-static inline void pfree(void *ptr, uint32_t size) {
+static void pfree(void *ptr, uint32_t size) {
     if (size <= 512) {
         CHUNCK_512_POOl::free(ptr);
     } else if (size <= 1024) {

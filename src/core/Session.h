@@ -2,20 +2,20 @@
 // Created by codingdie on 2020/9/17.
 //
 
-#ifndef ST_PROXY_TCPSESSION_H
-#define ST_PROXY_TCPSESSION_H
+#ifndef ST_PROXY_SESSION_H
+#define ST_PROXY_SESSION_H
 
 #include "Common.h"
 
-class TCPSession {
+class Session {
 public:
     enum STAGE { CONNECTING, CONNECTED, DETROYING, DETROYED };
 
     static const uint32_t bufferSize = 2048;
 
-    TCPSession(uint64_t id, tcp::socket &sock, st::proxy::Config &config);
+    Session(uint64_t id, tcp::socket &sock, st::proxy::Config &config);
 
-    virtual ~TCPSession();
+    virtual ~Session();
 
     uint64_t id;
     uint16_t port = 0;
@@ -26,7 +26,7 @@ public:
     uint64_t lastWriteTunnelTime = 0;
     uint64_t writeTunnelTime = 0;
     uint64_t writeTunnelSize = 0;
-    STStreamTunnel *connectedTunnel = nullptr;
+    StreamTunnel *connectedTunnel = nullptr;
     STAGE stage = CONNECTING;
     uint64_t tryConnectIndex = -1;
 
@@ -34,7 +34,7 @@ public:
 
     tcp::endpoint distEnd;
 
-    string toString();
+    string idStr();
 
     string transmit() const;
 
@@ -46,7 +46,7 @@ private:
     tcp::socket clientSock;
     tcp::socket proxySock;
     st::proxy::Config &config;
-    vector<STStreamTunnel *> targetTunnels;
+    vector<StreamTunnel *> targetTunnels;
     tcp::endpoint clientEnd;
     byte *readClientBuffer;
     byte *writeProxyBuffer;
@@ -72,9 +72,9 @@ private:
                     std::function<void(boost::system::error_code error)> completeHandler);
 
     void connetTunnels(std::function<void(bool)> completeHandler);
-    void directConnect(STStreamTunnel *tunnel, std::function<void(bool)> completeHandler);
+    void directConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler);
 
-    void proxyConnect(STStreamTunnel *tunnel, std::function<void(bool)> completeHandler);
+    void proxyConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler);
 
     void selectTunnels();
 
@@ -91,7 +91,7 @@ private:
 
     bool initProxySocks();
 
-    bool nextStage(TCPSession::STAGE nextStage);
+    bool nextStage(Session::STAGE nextStage);
 
 #ifdef linux
 
@@ -100,4 +100,4 @@ private:
 #endif
 };
 
-#endif// ST_PROXY_TCPSESSION_H
+#endif// ST_PROXY_SESSION_H

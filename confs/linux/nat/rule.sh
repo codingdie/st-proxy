@@ -1,6 +1,5 @@
 if [ "$1" != "clean" ]; then
   ipset create -! st-proxy-whitelist hash:net
-  ipset create -! st-proxy-tunnels hash:net
   ipset add -! st-proxy-whitelist 10.0.0.0/8
   ipset add -! st-proxy-whitelist 127.0.0.0/8
   ipset add -! st-proxy-whitelist 169.254.0.0/16
@@ -14,7 +13,6 @@ if [ "$1" != "clean" ]; then
 #  iptables -t nat -A st-proxy -p tcp  -j LOG --log-prefix "st-proxy-all" --log-level 6
 #  iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j LOG --log-prefix "st-proxy-mark" --log-level 6
 
-  iptables -t nat -A st-proxy -m set --match-set st-proxy-tunnels dst -j RETURN
   # Anything else should be redirected to st-proxy's local port
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j RETURN
   iptables -t nat -A st-proxy -p tcp -j REDIRECT --to-ports 40000
@@ -24,14 +22,11 @@ if [ "$1" != "clean" ]; then
   iptables -t nat -A PREROUTING -p tcp -j st-proxy
   iptables -t nat -L -n
   ipset list st-proxy-whitelist
-  ipset list st-proxy-tunnels
 else
   iptables -t nat -F st-proxy
   iptables -t nat -D OUTPUT -p tcp -j st-proxy
   iptables -t nat -D PREROUTING -p tcp -j st-proxy
   iptables -t nat -L -n
   ipset flush -! st-proxy-whitelist
-  ipset flush -! st-proxy-tunnels
   ipset create -! st-proxy-whitelist hash:net
-  ipset create -! st-proxy-tunnels hash:net
 fi

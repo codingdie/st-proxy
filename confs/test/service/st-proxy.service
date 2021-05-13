@@ -1,0 +1,10 @@
+[Unit]
+Description=st-proxy
+After=st-dns.service
+
+[Service]
+ExecStart=/bin/sh -c "/usr/local/bin/st-proxy -c /usr/local/etc/st/proxy >/tmp/st-proxy.log 2>/tmp/st-proxy.error"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
