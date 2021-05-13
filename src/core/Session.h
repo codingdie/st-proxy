@@ -2,51 +2,49 @@
 // Created by codingdie on 2020/9/17.
 //
 
-#ifndef ST_PROXY_TCPSESSION_H
-#define ST_PROXY_TCPSESSION_H
+#ifndef ST_PROXY_SESSION_H
+#define ST_PROXY_SESSION_H
 
 #include "Common.h"
 
-class TCPSession {
+class Session {
 public:
     enum STAGE { CONNECTING, CONNECTED, DETROYING, DETROYED };
 
     static const uint32_t bufferSize = 2048;
 
-    TCPSession(uint64_t id, tcp::socket &sock, st::proxy::Config &config);
-
-    virtual ~TCPSession();
-
     uint64_t id;
     uint16_t port = 0;
     uint64_t begin = 0;
-    uint64_t lastReadTunnelTime = 0;
-    uint64_t readTunnelTime = 0;
-    uint64_t readTunnelSize = 0;
-    uint64_t lastWriteTunnelTime = 0;
-    uint64_t writeTunnelTime = 0;
-    uint64_t writeTunnelSize = 0;
-    STStreamTunnel *connectedTunnel = nullptr;
+    IntervalCounter readTunnelCounter;
+    IntervalCounter writeTunnelCounter;
+
+    StreamTunnel *connectedTunnel = nullptr;
     STAGE stage = CONNECTING;
-    uint64_t tryConnectIndex = -1;
+
+    Session(uint64_t id, tcp::socket &sock, st::proxy::Config &config);
+
+    virtual ~Session();
 
     void start();
 
-    tcp::endpoint distEnd;
+    string idStr();
 
-    string toString();
+    string transmitLog() const;
 
-    string transmit() const;
+    std::pair<uint64_t, uint64_t> transmit() const;
 
     void shutdown();
 
     void tryConnect();
-
+    bool isTransmitting();
+    bool isConnectTimeout();
+    bool isClosed();
 private:
     tcp::socket clientSock;
     tcp::socket proxySock;
     st::proxy::Config &config;
-    vector<STStreamTunnel *> targetTunnels;
+    vector<StreamTunnel *> targetTunnels;
     tcp::endpoint clientEnd;
     byte *readClientBuffer;
     byte *writeProxyBuffer;
@@ -56,30 +54,31 @@ private:
     io_context::strand downStrand;
     mutex stageLock;
     int connectingTunnelIndex = 0;
-    void readClientMax(const string &tag, size_t maxSize,
-                       std::function<void(size_t size)> completeHandler);
+    uint64_t tryConnectIndex = -1;
+    tcp::endpoint distEnd;
+
+    void readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler);
     void readClient();
 
     void writeClient(size_t size);
     void writeClient(const string &tag, size_t size, std::function<void()> completeHandler);
 
     void readProxy();
-    void readProxy(size_t size,
-                   std::function<void(boost::system::error_code error)> completeHandler);
+    void readProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler);
     void writeProxy(size_t size);
     void writeProxy(const string &tag, size_t size, std::function<void()> completeHandler);
-    void writeProxy(size_t size,
-                    std::function<void(boost::system::error_code error)> completeHandler);
+    void writeProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler);
 
     void connetTunnels(std::function<void(bool)> completeHandler);
-    void directConnect(STStreamTunnel *tunnel, std::function<void(bool)> completeHandler);
 
-    void proxyConnect(STStreamTunnel *tunnel, std::function<void(bool)> completeHandler);
+    void directConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler);
+
+    void proxyConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler);
 
     void selectTunnels();
 
-
     void closeClient(std::function<void()> completeHandler);
+
     void closeServer(std::function<void()> completeHandler);
 
 
@@ -91,7 +90,7 @@ private:
 
     bool initProxySocks();
 
-    bool nextStage(TCPSession::STAGE nextStage);
+    bool nextStage(Session::STAGE nextStage);
 
 #ifdef linux
 
@@ -100,4 +99,4 @@ private:
 #endif
 };
 
-#endif// ST_PROXY_TCPSESSION_H
+#endif// ST_PROXY_SESSION_H

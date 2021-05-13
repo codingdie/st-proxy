@@ -10,22 +10,21 @@
 
 #include "AreaIpManager.h"
 #include "NATUtils.h"
-#include "TCPSession.h"
-#include "TCPSessionManager.h"
+#include "Session.h"
+#include "SessionManager.h"
 #include <set>
 #include <vector>
-TCPSession::TCPSession(uint64_t id, tcp::socket &sock, st::proxy::Config &config)
-    : id(id), begin(time::now()), clientSock(std::move(sock)), config(config),
-      proxySock((io_context &) clientSock.get_executor().context()),
-      upStrand((io_context &) clientSock.get_executor().context()),
-      downStrand((io_context &) clientSock.get_executor().context()) {
+Session::Session(uint64_t id, tcp::socket &sock, st::proxy::Config &config)
+    : id(id), begin(time::now()), clientSock(std::move(sock)), config(config), proxySock((io_context &) clientSock.get_executor().context()),
+      upStrand((io_context &) clientSock.get_executor().context()), downStrand((io_context &) clientSock.get_executor().context()),
+      readTunnelCounter(), writeTunnelCounter() {
     readProxyBuffer = pmalloc(bufferSize);
     readClientBuffer = pmalloc(bufferSize);
     writeProxyBuffer = pmalloc(bufferSize);
     writeClientBuffer = pmalloc(bufferSize);
 }
 
-void TCPSession::start() {
+void Session::start() {
     boost::system::error_code error;
     clientEnd = clientSock.remote_endpoint(error);
     if (error) {
@@ -40,7 +39,6 @@ void TCPSession::start() {
         return;
     }
 
-    auto begin = time::now();
     if (this->distEnd.address().to_v4().to_uint() == 0) {
         Logger::ERROR << "get dist addr illegel!" << END;
         shutdown();
@@ -48,28 +46,26 @@ void TCPSession::start() {
     }
     selectTunnels();
     if (targetTunnels.empty()) {
-        Logger::ERROR << "cal tunnels empty!" << END;
+        Logger::ERROR << idStr() << "cal tunnels empty!" << END;
         shutdown();
         return;
     }
     tryConnect();
 }
 
-void TCPSession::connetTunnels(std::function<void(bool)> completeHandler) {
+void Session::connetTunnels(std::function<void(bool)> completeHandler) {
     if (tryConnectIndex < targetTunnels.size()) {
         auto complete = [=](bool success) {
             if (success) {
                 this->connectedTunnel = targetTunnels[tryConnectIndex];
                 completeHandler(true);
             } else {
-                Logger::ERROR << "connect" << toString()
-                              << targetTunnels[tryConnectIndex]->toString() << "failed cost"
-                              << time::now() - begin << END;
+                Logger::ERROR << idStr() << "connect" << targetTunnels[tryConnectIndex]->toString() << "failed! cost" << time::now() - begin << END;
                 tryConnectIndex++;
                 connetTunnels(completeHandler);
             }
         };
-        STStreamTunnel *tunnel = targetTunnels[tryConnectIndex];
+        StreamTunnel *tunnel = targetTunnels[tryConnectIndex];
         if (tunnel->type == "DIRECT") {
             directConnect(tunnel, complete);
         } else {
@@ -79,13 +75,12 @@ void TCPSession::connetTunnels(std::function<void(bool)> completeHandler) {
         completeHandler(false);
     }
 }
-void TCPSession::tryConnect() {
+void Session::tryConnect() {
     tryConnectIndex++;
 
     connetTunnels([=](bool success) {
         Logger::traceId = id;
-        Logger::INFO << "connect" << toString() << (success ? "success!" : "failed") << "cost"
-                     << time::now() - begin << END;
+        Logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << time::now() - begin << END;
         if (success) {
             readClient();
             readProxy();
@@ -96,11 +91,11 @@ void TCPSession::tryConnect() {
     });
 }
 
-void TCPSession::selectTunnels() {
-    vector<pair<STStreamTunnel *, int>> tunnels;
+void Session::selectTunnels() {
+    vector<pair<StreamTunnel *, int>> tunnels;
     uint32_t distIP = distEnd.address().to_v4().to_uint();
     for (auto it = config.tunnels.begin(); it != config.tunnels.end(); it++) {
-        STStreamTunnel *tunnel = *it.base();
+        StreamTunnel *tunnel = *it.base();
         int score = tunnel->priority;
         if (tunnel->onlyAreaIp) {
             if (!AreaIpManager::isAreaIP(tunnel->area, distIP)) {
@@ -112,27 +107,25 @@ void TCPSession::selectTunnels() {
         };
         tunnels.emplace_back(make_pair(tunnel, score));
     }
-    if (distEnd.address().to_v4().to_string() == "172.64.108.19") {
-        for (auto pairv : tunnels) {
-            Logger::INFO << pairv.first->toString() << pairv.second << END;
+    sort(tunnels.begin(), tunnels.end(), [=](pair<StreamTunnel *, int> &a, pair<StreamTunnel *, int> &b) {
+        if (a.second != b.second) {
+            return a.second > b.second;
+        } else {
+            int ra = rand();
+            return abs(ra % 2) == 0;
         }
-    }
-    sort(tunnels.begin(), tunnels.end(),
-         [=](pair<STStreamTunnel *, int> &a, pair<STStreamTunnel *, int> &b) {
-             if (a.second != b.second) {
-                 return a.second > b.second;
-             } else {
-                 int ra = rand();
-                 return abs(ra % 2) == 0;
-             }
-         });
+    });
+    Logger::INFO << idStr() << "selectTunnels:";
+    int i = 0;
     for (auto &pairv : tunnels) {
-        STStreamTunnel *tunnel = pairv.first;
+        StreamTunnel *tunnel = pairv.first;
         targetTunnels.emplace_back(tunnel);
+        Logger::INFO << "[" + to_string(++i) + "]" + tunnel->toString() + "[" + to_string(pairv.second) + "]";
     }
+    Logger::INFO << END;
 }
 
-void TCPSession::directConnect(STStreamTunnel *tunnel, std::function<void(bool)> completeHandler) {
+void Session::directConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler) {
     if (!initProxySocks()) {
         completeHandler(false);
         return;
@@ -147,7 +140,7 @@ void TCPSession::directConnect(STStreamTunnel *tunnel, std::function<void(bool)>
     });
 }
 
-void TCPSession::proxyConnect(STStreamTunnel *tunnel, std::function<void(bool)> completeHandler) {
+void Session::proxyConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler) {
     if (!initProxySocks()) {
         completeHandler(false);
         return;
@@ -186,8 +179,7 @@ void TCPSession::proxyConnect(STStreamTunnel *tunnel, std::function<void(bool)> 
                                 return;
                             }
                             this->readProxy(10, [=](boost::system::error_code error) {
-                                if (!error && readProxyBuffer[0] == 0x05 &&
-                                    readProxyBuffer[1] == 0x00) {
+                                if (!error && readProxyBuffer[0] == 0x05 && readProxyBuffer[1] == 0x00) {
                                     completeHandler(true);
                                 } else {
                                     completeHandler(false);
@@ -202,7 +194,7 @@ void TCPSession::proxyConnect(STStreamTunnel *tunnel, std::function<void(bool)> 
         }
     });
 }
-bool TCPSession::initProxySocks() {
+bool Session::initProxySocks() {
     // mac use port to split
     boost::system::error_code error;
     bindLocalPort(clientEnd, error);
@@ -223,11 +215,10 @@ bool TCPSession::initProxySocks() {
 
 #ifdef linux
 
-void TCPSession::setMark() {
+void Session::setMark() {
     int fd = proxySock.native_handle();
     int mark = 1024;
     int error = setsockopt(fd, SOL_SOCKET, SO_MARK, &mark, sizeof(mark));
-    ;
     if (error == -1) {
         Logger::ERROR << "set mark error" << strerror(errno) << Logger::ENDL;
     }
@@ -235,7 +226,7 @@ void TCPSession::setMark() {
 
 #endif
 
-void TCPSession::bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::error_code &error) {
+void Session::bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::error_code &error) {
     boost::system::error_code se;
     proxySock.shutdown(boost::asio::socket_base::shutdown_both, se);
     proxySock.release(se);
@@ -243,48 +234,40 @@ void TCPSession::bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::err
     proxySock.cancel(se);
     proxySock.open(tcp::v4());
 #ifdef __APPLE__
-    proxySock.bind(
-            tcp::endpoint(endpoint.address(), TCPSessionManager::INSTANCE->guessUnusedSafePort()),
-            error);
+    proxySock.bind(tcp::endpoint(endpoint.address(), SessionManager::INSTANCE->guessUnusedSafePort()), error);
     int i = 1;
     while (error && i <= 1000) {
-        proxySock.bind(tcp::endpoint(endpoint.address(),
-                                     TCPSessionManager::INSTANCE->guessUnusedSafePort()),
-                       error);
+        proxySock.bind(tcp::endpoint(endpoint.address(), SessionManager::INSTANCE->guessUnusedSafePort()), error);
         i++;
     }
 #endif
 }
 
-void TCPSession::readClient() {
+void Session::readClient() {
     readClientMax("readClient", bufferSize, [=](size_t size) {
         copyByte(this->readClientBuffer, this->writeProxyBuffer, size);
         writeProxy(size);
     });
 }
-void TCPSession::readClientMax(const string &tag, size_t maxSize,
-                               std::function<void(size_t size)> completeHandler) {
-    clientSock.async_read_some(buffer(readClientBuffer, sizeof(uint8_t) * maxSize),
-                               upStrand.wrap([=](boost::system::error_code error, size_t size) {
-                                   Logger::traceId = this->id;
-                                   if (!error) {
-                                       completeHandler(size);
-                                   } else {
-                                       processError(error, tag);
-                                   }
-                               }));
+void Session::readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler) {
+    clientSock.async_read_some(buffer(readClientBuffer, sizeof(uint8_t) * maxSize), upStrand.wrap([=](boost::system::error_code error, size_t size) {
+        Logger::traceId = this->id;
+        if (!error) {
+            completeHandler(size);
+        } else {
+            processError(error, tag);
+        }
+    }));
 }
 
 
-void TCPSession::readProxy() {
+void Session::readProxy() {
     long begin = time::now();
     proxySock.async_read_some(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
                               downStrand.wrap([=](boost::system::error_code error, size_t size) {
                                   Logger::traceId = this->id;
                                   if (!error) {
-                                      lastReadTunnelTime = time::now();
-                                      readTunnelTime += time::now() - begin;
-                                      readTunnelSize += size;
+                                      readTunnelCounter += size;
                                       copyByte(readProxyBuffer, writeClientBuffer, size);
                                       writeClient(size);
                                   } else {
@@ -292,14 +275,11 @@ void TCPSession::readProxy() {
                                   }
                               }));
 }
-void TCPSession::readProxy(size_t size,
-                           std::function<void(boost::system::error_code error)> completeHandler) {
+void Session::readProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler) {
     proxySock.async_receive(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
-                            downStrand.wrap([=](boost::system::error_code error, size_t size) {
-                                completeHandler(error);
-                            }));
+                            downStrand.wrap([=](boost::system::error_code error, size_t size) { completeHandler(error); }));
 }
-void TCPSession::processError(const boost::system::error_code &error, const string &TAG) {
+void Session::processError(const boost::system::error_code &error, const string &TAG) {
     bool isEOF = error.category() == error::misc_category && error == error::misc_errors::eof;
     bool isCancled = error == error::operation_aborted;
     if (!isCancled && !isEOF) {
@@ -309,14 +289,14 @@ void TCPSession::processError(const boost::system::error_code &error, const stri
 }
 
 
-void TCPSession::closeClient(std::function<void()> completeHandler) {
+void Session::closeClient(std::function<void()> completeHandler) {
     boost::system::error_code ec;
     clientSock.shutdown(boost::asio::socket_base::shutdown_both, ec);
     clientSock.cancel(ec);
     clientSock.close(ec);
     completeHandler();
 }
-void TCPSession::closeServer(std::function<void()> completeHandler) {
+void Session::closeServer(std::function<void()> completeHandler) {
     boost::system::error_code ec;
     proxySock.shutdown(boost::asio::socket_base::shutdown_both, ec);
     proxySock.cancel(ec);
@@ -324,16 +304,15 @@ void TCPSession::closeServer(std::function<void()> completeHandler) {
     completeHandler();
 }
 
-void TCPSession::shutdown() {
+void Session::shutdown() {
     if (nextStage(DETROYING)) {
         closeClient([=] { closeServer([=] { nextStage(DETROYED); }); });
     }
 }
-void TCPSession::writeProxy(size_t writeSize) {
+void Session::writeProxy(size_t writeSize) {
     writeProxy("writeProxy", writeSize, [=]() { readClient(); });
 }
-void TCPSession::writeProxy(const string &tag, size_t writeSize,
-                            std::function<void()> completeHandler) {
+void Session::writeProxy(const string &tag, size_t writeSize, std::function<void()> completeHandler) {
     writeProxy(writeSize, [=](boost::system::error_code error) {
         if (!error) {
             completeHandler();
@@ -342,65 +321,58 @@ void TCPSession::writeProxy(const string &tag, size_t writeSize,
         }
     });
 }
-void TCPSession::writeProxy(size_t writeSize,
-                            std::function<void(boost::system::error_code error)> completeHandler) {
+void Session::writeProxy(size_t writeSize, std::function<void(boost::system::error_code error)> completeHandler) {
     long begin = time::now();
     size_t len = sizeof(uint8_t) * writeSize;
-    boost::asio::async_write(proxySock, buffer(writeProxyBuffer, len),
-                             boost::asio::transfer_at_least(len),
+    boost::asio::async_write(proxySock, buffer(writeProxyBuffer, len), boost::asio::transfer_at_least(len),
                              upStrand.wrap([=](boost::system::error_code error, size_t size) {
                                  Logger::traceId = this->id;
                                  if (!error) {
-                                     lastWriteTunnelTime = time::now();
-                                     writeTunnelTime += time::now() - begin;
-                                     writeTunnelSize += size;
-                                     // Logger::TRACE << "writeProxy" << writeSize << size << END;
+                                     writeTunnelCounter += size;
                                  }
                                  completeHandler(error);
                              }));
 }
 
-void TCPSession::writeClient(size_t writeSize) {
+void Session::writeClient(size_t writeSize) {
     writeClient("writeClient", writeSize, [=]() { readProxy(); });
 }
 
-void TCPSession::writeClient(const string &tag, size_t writeSize,
-                             std::function<void()> completeHandler) {
+void Session::writeClient(const string &tag, size_t writeSize, std::function<void()> completeHandler) {
     size_t len = sizeof(uint8_t) * writeSize;
-    boost::asio::async_write(clientSock, buffer(writeClientBuffer, len),
-                             boost::asio::transfer_at_least(len),
+    boost::asio::async_write(clientSock, buffer(writeClientBuffer, len), boost::asio::transfer_at_least(len),
                              downStrand.wrap([=](boost::system::error_code error, size_t size) {
                                  Logger::traceId = this->id;
                                  if (error) {
                                      processError(error, tag);
                                  } else {
-                                     // Logger::TRACE << "writeClient" << writeSize << size << END;
                                      completeHandler();
                                  }
                              }));
 }
 
 
-TCPSession::~TCPSession() {
+Session::~Session() {
     Logger::traceId = id;
-    Logger::INFO << "disconnect" << toString() << transmit() << END;
-     pfree(readProxyBuffer,bufferSize);
-     pfree(readClientBuffer, bufferSize);
-     pfree(writeProxyBuffer, bufferSize);
-     pfree(writeClientBuffer, bufferSize);
+    Logger::INFO << idStr() << "disconnect" << transmitLog() << END;
+    pfree(readProxyBuffer, bufferSize);
+    pfree(readClientBuffer, bufferSize);
+    pfree(writeProxyBuffer, bufferSize);
+    pfree(writeClientBuffer, bufferSize);
 }
 
-string TCPSession::toString() {
-    return asio::addrStr(clientEnd) + " -> " + asio::addrStr(distEnd) + " " +
-           (connectedTunnel != nullptr ? connectedTunnel->toString() : "");
+string Session::idStr() {
+    return asio::addrStr(clientEnd) + "->" + asio::addrStr(distEnd) + (connectedTunnel != nullptr ? +"->" + connectedTunnel->toString() : "");
 }
 
-string TCPSession::transmit() const {
+string Session::transmitLog() const {
     const uint64_t val = time::now() - this->begin;
-    return "live:" + to_string(val) + ", read:" + to_string(this->readTunnelSize) +
-           ", write:" + to_string(this->writeTunnelSize);
+    return "live:" + to_string(val) + ", read:" + to_string(this->readTunnelCounter.total().second) +
+           ", write:" + to_string(this->writeTunnelCounter.total().second);
 }
-bool TCPSession::nextStage(TCPSession::STAGE nextStage) {
+std::pair<uint64_t, uint64_t> Session::transmit() const {}
+
+bool Session::nextStage(Session::STAGE nextStage) {
 
     stageLock.lock();
     bool result = false;
@@ -411,3 +383,19 @@ bool TCPSession::nextStage(TCPSession::STAGE nextStage) {
     stageLock.unlock();
     return result;
 }
+bool Session::isTransmitting() {
+    uint64_t soTimeout = st::proxy::Config::INSTANCE.soTimeout;
+    auto now = time::now();
+    bool noWrite = !writeTunnelCounter.isStart() ? (now - begin >= soTimeout) : (now - writeTunnelCounter.getLastRecordTime() >= soTimeout);
+    bool noRead = !readTunnelCounter.isStart() ? (now - begin >= soTimeout) : (now - readTunnelCounter.getLastRecordTime() >= soTimeout);
+    return !(noWrite && noRead);
+}
+
+bool Session::isConnectTimeout() {
+    uint64_t conTimeout = st::proxy::Config::INSTANCE.connectTimeout;
+    auto now = time::now();
+    return stage == Session::STAGE::CONNECTING ? (now - begin >= conTimeout) : false;
+}
+
+
+bool Session::isClosed() { return stage == Session::STAGE::DETROYED; }

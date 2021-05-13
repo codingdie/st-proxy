@@ -14,8 +14,7 @@
 
 #ifdef __APPLE__
 
-tcp::endpoint NATUtils::getDstAddrForMac(__uint32_t clientIp, __uint16_t clientPort,
-                                         __uint32_t serverIp, __uint16_t serverPort) {
+tcp::endpoint NATUtils::getDstAddrForMac(__uint32_t clientIp, __uint16_t clientPort, __uint32_t serverIp, __uint16_t serverPort) {
     uint32_t ip = 0;
     uint16_t port = 0;
     struct pfioc_natlook pnl;
@@ -52,11 +51,9 @@ tcp::endpoint NATUtils::getProxyAddr(boost::asio::ip::tcp::socket &socket) {
     if (!ec) {
         auto serverEnd = socket.local_endpoint(ec);
         if (!ec) {
-            return move(getDstAddrForMac(clientEnd.address().to_v4().to_uint(), clientEnd.port(),
-                                         serverEnd.address().to_v4().to_uint(), serverEnd.port()));
+            return move(getDstAddrForMac(clientEnd.address().to_v4().to_uint(), clientEnd.port(), serverEnd.address().to_v4().to_uint(), serverEnd.port()));
         } else {
-            Logger::ERROR << __PRETTY_FUNCTION__ << "get server addr failed!" << ec.message()
-                          << END;
+            Logger::ERROR << __PRETTY_FUNCTION__ << "get server addr failed!" << ec.message() << END;
         }
     } else {
         Logger::ERROR << __PRETTY_FUNCTION__ << "get client addr failed!" << ec.message() << END;
@@ -87,22 +84,30 @@ NATUtils::NATUtils() {
 #endif
 }
 
-bool NATUtils::addToNatWhitelist(uint32_t ip) {
+bool NATUtils::addToWhitelist(uint32_t ip) { return addToIPSet("st-proxy-whitelist", ip); }
+
+bool NATUtils::addTestDomain(string domain) { return addToIPSet("st-proxy-test", domain); }
+
+bool NATUtils::addToIPSet(string name, string domain) {
+    for (auto ip : st::utils::dns::query(domain)) {
+        addToIPSet(name, ip);
+    }
+}
+bool NATUtils::addToIPSet(string name, uint32_t ip) {
     string result;
     string error;
 #ifdef __APPLE__
-    bool success =
-            shell::exec("pfctl -t st-proxy-whitelist -T add " + ipv4::ipToStr(ip), result, error);
+    bool success = shell::exec("pfctl -t " + name + " -T add " + ipv4::ipToStr(ip), result, error);
 #endif
 #ifdef linux
-    auto command = "/usr/sbin/ipset add -! st-proxy-tunnels " + ipv4::ipToStr(ip);
+    auto command = "/usr/sbin/ipset add -! " + name + " " + ipv4::ipToStr(ip);
     Logger::INFO << command << END;
     bool success = shell::exec(command, result, error);
 #endif
     if (!success) {
-        Logger::ERROR << "addToNatWhitelist error!" << ipv4::ipToStr(ip) << error << END;
+        Logger::ERROR << "addToIPSet error!" << name << ipv4::ipToStr(ip) << error << END;
     } else {
-        Logger::INFO << "addToNatWhitelist success!" << ipv4::ipToStr(ip) << result << END;
+        Logger::INFO << "addToIPSet success!" << name << ipv4::ipToStr(ip) << result << END;
     }
     return success;
 }

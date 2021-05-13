@@ -14,28 +14,28 @@ typedef uint8_t byte;
 
 namespace st {
     namespace utils {
-        static inline void copyByte(byte *from, byte *to, int size) {
+        static void copyByte(byte *from, byte *to, int size) {
             for (int i = 0; i < size; i++) { *(to + i) = *(from + i); }
         }
 
         template<typename ItemType, typename Num>
-        static inline void copy(ItemType *from, ItemType *to, Num len) {
+        static void copy(ItemType *from, ItemType *to, Num len) {
             for (auto i = 0; i < len; i++) { *(to + i) = *(from + i); }
         };
 
         template<typename ItemType, typename Num>
-        static inline void copy(const char *from, ItemType &to, Num len) {
+        static void copy(const char *from, ItemType &to, Num len) {
             for (auto i = 0; i < len; i++) { to[i] = *(from + i); }
         };
 
         template<typename ItemType, typename ItemTypeB, typename NumA, typename NumB, typename NumC>
-        static inline void copy(ItemType *from, ItemTypeB *to, NumA indexFrom, NumB distFrom,
+        static void copy(ItemType *from, ItemTypeB *to, NumA indexFrom, NumB distFrom,
                                 NumC len) {
             for (auto i = 0; i < len; i++) { *(to + distFrom + i) = *(from + indexFrom + i); }
         };
 
         template<typename Num>
-        static inline void toBytes(byte *byteArr, Num num) {
+        static void toBytes(byte *byteArr, Num num) {
             uint8_t len = sizeof(Num);
             for (auto i = 0; i < len; i++) {
                 uint64_t move = (len - i - 1) * 8U;
@@ -45,7 +45,7 @@ namespace st {
         };
 
         template<typename IntTypeB>
-        static inline void read(const byte *data, IntTypeB &result) {
+        static void read(const byte *data, IntTypeB &result) {
             uint8_t len = sizeof(IntTypeB);
             for (uint8_t i = 0; i < len; i++) {
                 byte val = *(data + i);
@@ -55,7 +55,7 @@ namespace st {
             }
         }
 
-        static inline string join(vector<string> &lists, const char *delimit) {
+        static string join(vector<string> &lists, const char *delimit) {
             string result;
             for (auto value : lists) {
                 if (!result.empty()) { result += delimit; }
@@ -65,7 +65,7 @@ namespace st {
         }
 
         template<typename IntTypeB>
-        static inline byte *write(byte *data, IntTypeB &result) {
+        static byte *write(byte *data, IntTypeB &result) {
             uint8_t len = sizeof(IntTypeB);
             for (uint8_t i = 0; i < len; i++) {
                 auto i1 = (len - i - 1) * 8;

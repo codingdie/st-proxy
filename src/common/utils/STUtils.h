@@ -15,6 +15,7 @@
 #include "StringUtils.h"
 #include "TimeUtils.h"
 #include "asio/STUtils.h"
+#include "IntervalCounter.h"
 #include <random>
 #include <string>
 using namespace st::utils;

@@ -2,12 +2,12 @@
 // Created by codingdie on 2020/10/5.
 //
 
-#ifndef ST_PROXY_TCPSESSIONMANAGER_H
-#define ST_PROXY_TCPSESSIONMANAGER_H
+#ifndef ST_PROXY_SESSIONMANAGER_H
+#define ST_PROXY_SESSIONMANAGER_H
 
 #include "Common.h"
 #include "Config.h"
-#include "TCPSession.h"
+#include "Session.h"
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
@@ -15,24 +15,24 @@ using std::default_random_engine;
 
 using namespace std;
 
-class TCPSessionManager {
+class SessionManager {
 public:
-    TCPSession *addNewSession(tcp::socket &socket, st::proxy::Config &config);
+    Session *addNewSession(tcp::socket &socket, st::proxy::Config &config);
 
     bool destroySession(uint64_t id);
     void stats();
 
     uint16_t guessUnusedSafePort();
 
-    TCPSessionManager();
+    SessionManager();
 
-    static TCPSessionManager *INSTANCE;
+    static SessionManager *INSTANCE;
 
-    virtual ~TCPSessionManager();
+    virtual ~SessionManager();
 
 private:
-    unordered_map<uint64_t, TCPSession *> connections;
-    unordered_map<string, pair<uint64_t, uint64_t>> speeds;
+    unordered_map<uint64_t, Session *> connections;
+    unordered_map<string, pair<pair<uint64_t, uint64_t>, pair<uint64_t, uint64_t>>> speeds;
     std::atomic<uint64_t> id;
     default_random_engine randomEngine;
     uniform_int_distribution<unsigned short> randomRange;//随机数分布对象
@@ -49,4 +49,4 @@ private:
 };
 
 
-#endif//ST_PROXY_TCPSESSIONMANAGER_H
+#endif//ST_PROXY_SESSIONMANAGER_H

@@ -2,20 +2,20 @@
 #define DNSUTILS_H
 
 #include "IPUtils.h"
+#include "Logger.h"
 #include "ShellUtils.h"
 #include "StringUtils.h"
 #include <boost/algorithm/string.hpp>
 #include <boost/asio.hpp>
 #include <string>
 #include <vector>
-#include "Logger.h"
 
 using namespace boost::asio;
 using namespace std;
 namespace st {
     namespace utils {
         namespace dns {
-            static inline vector<uint32_t> query(const string &dnsServer, const string &host) {
+            static vector<uint32_t> query(const string &dnsServer, const string &host) {
                 string error;
                 string result;
                 vector<uint32_t> resultIPs;
@@ -29,12 +29,13 @@ namespace st {
                             boost::trim(ipStr);
                             resultIPs.emplace_back(st::utils::ipv4::strToIp(ipStr));
                         }
-                        nameLine = str.find("Name:") != string::npos &&
-                                   str.find(host) != string::npos;
+                        if (!nameLine) {
+                            nameLine = str.find("Name:") != string::npos && str.find(host) != string::npos;
+                        }
                     }
                 }
                 if (resultIPs.empty()) {
-                    if (!result.empty()){
+                    if (!result.empty()) {
                         Logger::INFO << result << END;
                     }
                     if (!error.empty()) {
@@ -43,7 +44,7 @@ namespace st {
                 }
                 return resultIPs;
             }
-            static inline vector<uint32_t> query(const string &host) {
+            static vector<uint32_t> query(const string &host) {
                 vector<uint32_t> resultIPs;
 
                 boost::asio::io_context ctx;

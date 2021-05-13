@@ -11,7 +11,7 @@
 namespace st {
     namespace utils {
         namespace strutils {
-            static inline vector<std::string> split(const std::string &str,
+            static vector<std::string> split(const std::string &str,
                                                     const std::string &split) {
                 vector<std::string> result;
                 if (!str.empty()) {
@@ -32,7 +32,7 @@ namespace st {
             }
         }// namespace strutils
         namespace str {
-            static inline std::vector<std::string> split(const std::string &str,
+            static std::vector<std::string> split(const std::string &str,
                                                          const std::string &split) {
                 std::vector<std::string> result;
                 int pos = 0;
