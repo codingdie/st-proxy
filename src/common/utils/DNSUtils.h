@@ -21,7 +21,7 @@ namespace st {
                 vector<uint32_t> resultIPs;
                 auto cm = "nslookup " + host + "  " + dnsServer;
                 auto success = st::utils::shell::exec(cm, result, error);
-                if (success && !result.empty()) {
+                if (!result.empty()) {
                     bool nameLine = false;
                     for (auto &str : st::utils::str::split(result, "\n")) {
                         if (nameLine && str.find("Address") != string::npos) {

@@ -15,7 +15,6 @@ public:
 
     uint64_t id;
     uint16_t port = 0;
-    uint64_t begin = 0;
     IntervalCounter readTunnelCounter;
     IntervalCounter writeTunnelCounter;
 
@@ -56,7 +55,7 @@ private:
     int connectingTunnelIndex = 0;
     uint64_t tryConnectIndex = -1;
     tcp::endpoint distEnd;
-
+    uint64_t begin = 0;
     void readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler);
     void readClient();
 

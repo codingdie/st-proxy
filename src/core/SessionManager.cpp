@@ -52,9 +52,9 @@ void SessionManager::stats() {
     for (auto it = speeds.begin(); it != speeds.end(); it++) {
         auto down = it->second.first;
         auto up = it->second.second;
-        if (down.first != 0 || up.first != 0) {
-            Logger::INFO << "tunnel" << it->first << "read speed:" << down.second * 1000.0 / down.first
-                         << "write speed:" << up.second * 1000.0 / up.first << END;
+        if ((down.first > 0 && down.second > 0) || (up.first > 0 && up.second > 0)) {
+            Logger::INFO << "tunnel" << it->first << "read speed:" << ((down.first > 0) ? down.second * 1000.0 / down.first / 1024 : 0)
+                         << "write speed:" << ((up.first > 0) ? up.second * 1000.0 / up.first / 1024 : 0) << END;
         }
     }
 }
@@ -63,7 +63,7 @@ uint16_t SessionManager::guessUnusedSafePort() { return randomRange(randomEngine
 
 
 void SessionManager::scheduleStats() {
-    statTimer.expires_from_now(boost::posix_time::seconds(10));
+    statTimer.expires_from_now(boost::posix_time::seconds(30));
     statTimer.async_wait([&](boost::system::error_code ec) {
         if (id > 0) {
             this->stats();

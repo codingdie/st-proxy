@@ -15,9 +15,10 @@
 #include <set>
 #include <vector>
 Session::Session(uint64_t id, tcp::socket &sock, st::proxy::Config &config)
-    : id(id), begin(time::now()), clientSock(std::move(sock)), config(config), proxySock((io_context &) clientSock.get_executor().context()),
-      upStrand((io_context &) clientSock.get_executor().context()), downStrand((io_context &) clientSock.get_executor().context()),
-      readTunnelCounter(), writeTunnelCounter() {
+    : id(id), begin(time::now()), clientSock(std::move(sock)), config(config),
+      proxySock((io_context &) clientSock.get_executor().context()),
+      upStrand((io_context &) clientSock.get_executor().context()),
+      downStrand((io_context &) clientSock.get_executor().context()), readTunnelCounter(), writeTunnelCounter() {
     readProxyBuffer = pmalloc(bufferSize);
     readClientBuffer = pmalloc(bufferSize);
     writeProxyBuffer = pmalloc(bufferSize);
@@ -60,7 +61,8 @@ void Session::connetTunnels(std::function<void(bool)> completeHandler) {
                 this->connectedTunnel = targetTunnels[tryConnectIndex];
                 completeHandler(true);
             } else {
-                Logger::ERROR << idStr() << "connect" << targetTunnels[tryConnectIndex]->toString() << "failed! cost" << time::now() - begin << END;
+                Logger::ERROR << idStr() << "connect" << targetTunnels[tryConnectIndex]->toString() << "failed! cost"
+                              << time::now() - begin << END;
                 tryConnectIndex++;
                 connetTunnels(completeHandler);
             }
@@ -80,7 +82,8 @@ void Session::tryConnect() {
 
     connetTunnels([=](bool success) {
         Logger::traceId = id;
-        Logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << time::now() - begin << END;
+        Logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << time::now() - begin
+                     << END;
         if (success) {
             readClient();
             readProxy();
@@ -250,24 +253,34 @@ void Session::readClient() {
     });
 }
 void Session::readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler) {
-    clientSock.async_read_some(buffer(readClientBuffer, sizeof(uint8_t) * maxSize), upStrand.wrap([=](boost::system::error_code error, size_t size) {
-        Logger::traceId = this->id;
-        if (!error) {
-            completeHandler(size);
-        } else {
-            processError(error, tag);
-        }
-    }));
+    clientSock.async_read_some(buffer(readClientBuffer, sizeof(uint8_t) * maxSize),
+                               upStrand.wrap([=](boost::system::error_code error, size_t size) {
+                                   Logger::traceId = this->id;
+                                   if (!error) {
+                                       completeHandler(size);
+                                   } else {
+                                       processError(error, tag);
+                                   }
+                               }));
 }
 
 
 void Session::readProxy() {
-    long begin = time::now();
+    uint64_t begin = time::now();
     proxySock.async_read_some(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
                               downStrand.wrap([=](boost::system::error_code error, size_t size) {
                                   Logger::traceId = this->id;
                                   if (!error) {
-                                      readTunnelCounter += size;
+                                      if (connectedTunnel != nullptr) {
+                                          readTunnelCounter += size;
+                                          APMLogger::perf("st-proxy-stream",
+                                                          {{"direction", "down"},
+                                                           {"tunnel", connectedTunnel->toString()},
+                                                           {"clientIP", clientEnd.address().to_string()},
+                                                           {"distIP", distEnd.address().to_string()},
+                                                           {"distEndPort", to_string(distEnd.port())}},
+                                                          size);
+                                      }
                                       copyByte(readProxyBuffer, writeClientBuffer, size);
                                       writeClient(size);
                                   } else {
@@ -276,8 +289,9 @@ void Session::readProxy() {
                               }));
 }
 void Session::readProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler) {
-    proxySock.async_receive(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
-                            downStrand.wrap([=](boost::system::error_code error, size_t size) { completeHandler(error); }));
+    proxySock.async_receive(
+            buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
+            downStrand.wrap([=](boost::system::error_code error, size_t size) { completeHandler(error); }));
 }
 void Session::processError(const boost::system::error_code &error, const string &TAG) {
     bool isEOF = error.category() == error::misc_category && error == error::misc_errors::eof;
@@ -328,7 +342,16 @@ void Session::writeProxy(size_t writeSize, std::function<void(boost::system::err
                              upStrand.wrap([=](boost::system::error_code error, size_t size) {
                                  Logger::traceId = this->id;
                                  if (!error) {
-                                     writeTunnelCounter += size;
+                                     if (connectedTunnel != nullptr) {
+                                         writeTunnelCounter += size;
+                                         APMLogger::perf("st-proxy-stream",
+                                                         {{"direction", "up"},
+                                                          {"tunnel", connectedTunnel->toString()},
+                                                          {"clientIP", clientEnd.address().to_string()},
+                                                          {"distIP", distEnd.address().to_string()},
+                                                          {"distEndPort", to_string(distEnd.port())}},
+                                                         size);
+                                     }
                                  }
                                  completeHandler(error);
                              }));
@@ -362,7 +385,8 @@ Session::~Session() {
 }
 
 string Session::idStr() {
-    return asio::addrStr(clientEnd) + "->" + asio::addrStr(distEnd) + (connectedTunnel != nullptr ? +"->" + connectedTunnel->toString() : "");
+    return asio::addrStr(clientEnd) + "->" + asio::addrStr(distEnd) +
+           (connectedTunnel != nullptr ? +"->" + connectedTunnel->toString() : "");
 }
 
 string Session::transmitLog() const {
@@ -373,7 +397,6 @@ string Session::transmitLog() const {
 std::pair<uint64_t, uint64_t> Session::transmit() const {}
 
 bool Session::nextStage(Session::STAGE nextStage) {
-
     stageLock.lock();
     bool result = false;
     if (this->stage < nextStage) {
@@ -386,8 +409,10 @@ bool Session::nextStage(Session::STAGE nextStage) {
 bool Session::isTransmitting() {
     uint64_t soTimeout = st::proxy::Config::INSTANCE.soTimeout;
     auto now = time::now();
-    bool noWrite = !writeTunnelCounter.isStart() ? (now - begin >= soTimeout) : (now - writeTunnelCounter.getLastRecordTime() >= soTimeout);
-    bool noRead = !readTunnelCounter.isStart() ? (now - begin >= soTimeout) : (now - readTunnelCounter.getLastRecordTime() >= soTimeout);
+    bool noWrite = !writeTunnelCounter.isStart() ? (now - begin >= soTimeout)
+                                                 : (now - writeTunnelCounter.getLastRecordTime() >= soTimeout);
+    bool noRead = !readTunnelCounter.isStart() ? (now - begin >= soTimeout)
+                                               : (now - readTunnelCounter.getLastRecordTime() >= soTimeout);
     return !(noWrite && noRead);
 }
 

@@ -5,6 +5,7 @@
 #ifndef ST_UTILS_H
 #define ST_UTILS_H
 
+#include "Base64Utils.h"
 #include "ByteUtils.h"
 #include "DNSUtils.h"
 #include "FileUtils.h"
