@@ -11,13 +11,14 @@
 #include <random>
 #include <unordered_map>
 #include <unordered_set>
+
 using std::default_random_engine;
 
 using namespace std;
 
 class SessionManager {
 public:
-    Session *addNewSession(tcp::socket &socket, st::proxy::Config &config);
+    Session *addNewSession(tcp::socket &socket);
 
     bool destroySession(uint64_t id);
     void stats();
@@ -42,7 +43,7 @@ private:
     std::thread timerTh;
     boost::asio::deadline_timer statTimer;
     boost::asio::deadline_timer sessionTimer;
-
+    st::utils::dns::DNSReverseSHM dnsReverseSHM;
     void scheduleStats();
     void scheduleMonitor();
     void monitorSession();

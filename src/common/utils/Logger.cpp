@@ -243,8 +243,6 @@ void APMLogger::scheduleLog() {
                 finalPT.put("count", count);
                 if (UDP_LOG_SERVER.isValid()) {
                     UDPLogger::INSTANCE.log(UDP_LOG_SERVER, toJson(finalPT));
-                } else {
-                    Logger::WARN << "UDP_LOG_SERVER is invalid!" << END;
                 }
             }
         }

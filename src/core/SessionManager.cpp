@@ -7,21 +7,21 @@
 
 static mutex monitorLock;
 static mutex statsLock;
-Session *SessionManager::addNewSession(tcp::socket &socket, st::proxy::Config &config) {
-    Session *tcpSession = new Session(++id, socket, config);
+Session *SessionManager::addNewSession(tcp::socket &socket) {
+    Session *tcpSession = new Session(++id, socket);
     auto theId = tcpSession->id;
     Logger::traceId = theId;
+    tcpSession->start();
     {
         lock_guard<mutex> lockGuard(statsLock);
         connections.emplace(make_pair(theId, tcpSession));
     };
-    tcpSession->start();
     return tcpSession;
 }
 
 SessionManager::SessionManager()
-    : id(0), randomRange(1024, 12000), ioContextWork(new boost::asio::io_context::work(ioContext)), timerTh([&] { ioContext.run(); }),
-      statTimer(ioContext), sessionTimer(ioContext) {
+    : id(0), randomRange(1024, 12000), ioContextWork(new boost::asio::io_context::work(ioContext)),
+      timerTh([&] { ioContext.run(); }), statTimer(ioContext), sessionTimer(ioContext), dnsReverseSHM() {
     randomEngine.seed(time::now());
     scheduleStats();
     scheduleMonitor();
@@ -46,17 +46,17 @@ void SessionManager::stats() {
     Logger::traceId = 0;
     Logger::INFO << "total sessions size:" << connections.size() << END;
     lock_guard<mutex> statsLockGuard(statsLock);
-    for (auto it = connections.begin(); it != connections.end(); it++) {
-        Logger::DEBUG << "session" << it->second->idStr() << END;
-    }
     for (auto it = speeds.begin(); it != speeds.end(); it++) {
         auto down = it->second.first;
         auto up = it->second.second;
         if ((down.first > 0 && down.second > 0) || (up.first > 0 && up.second > 0)) {
-            Logger::INFO << "tunnel" << it->first << "read speed:" << ((down.first > 0) ? down.second * 1000.0 / down.first / 1024 : 0)
-                         << "write speed:" << ((up.first > 0) ? up.second * 1000.0 / up.first / 1024 : 0) << END;
+            Logger::INFO << "tunnel" << it->first << "read" << to_string(down.second / 1024) + "KiB"
+                         << "speed" << ((down.first > 0) ? down.second * 1.0 / down.first / 1024 * 1000 : 0) << "write"
+                         << to_string(up.second / 1024) + "KiB"
+                         << "speed" << ((up.first > 0) ? up.second * 1.0 / up.first / 1024 * 1000 : 0) << END;
         }
     }
+    speeds.clear();
 }
 
 uint16_t SessionManager::guessUnusedSafePort() { return randomRange(randomEngine); }
@@ -73,7 +73,7 @@ void SessionManager::scheduleStats() {
 }
 
 void SessionManager::scheduleMonitor() {
-    sessionTimer.expires_from_now(boost::posix_time::seconds(1));
+    sessionTimer.expires_from_now(boost::posix_time::seconds(5));
     sessionTimer.async_wait([&](boost::system::error_code ec) {
         if (id > 0) {
             this->monitorSession();
@@ -90,12 +90,11 @@ SessionManager::~SessionManager() {
 }
 
 void SessionManager::monitorSession() {
-    auto now = time::now();
+    dnsReverseSHM.relocate();
     set<uint64_t> closedIds;
     {
         lock_guard<mutex> monitorLockGuard(monitorLock);
         lock_guard<mutex> statsLockGuard(statsLock);
-        speeds.clear();
         for (auto it = connections.begin(); it != connections.end(); it++) {
             auto session = (*it).second;
             auto id = (*it).first;
@@ -107,6 +106,21 @@ void SessionManager::monitorSession() {
                 }
                 auto readInterval = session->readTunnelCounter.interval();
                 auto writeInterval = session->writeTunnelCounter.interval();
+                auto distHost = dnsReverseSHM.query(session->distEnd.address().to_v4().to_uint());
+                APMLogger::perf("st-proxy-stream",
+                                {{"direction", "down"},
+                                 {"tunnel", session->connectedTunnel->toString()},
+                                 {"clientIP", session->clientEnd.address().to_string()},
+                                 {"distHost", distHost},
+                                 {"distEndPort", to_string(session->distEnd.port())}},
+                                readInterval.second);
+                APMLogger::perf("st-proxy-stream",
+                                {{"direction", "up"},
+                                 {"tunnel", session->connectedTunnel->toString()},
+                                 {"clientIP", session->clientEnd.address().to_string()},
+                                 {"distHost", distHost},
+                                 {"distEndPort", to_string(session->distEnd.port())}},
+                                writeInterval.second);
                 if (readInterval.second > 0) {
                     speeds[tunnelId].first.first += readInterval.first;
                     speeds[tunnelId].first.second += readInterval.second;
@@ -121,10 +135,10 @@ void SessionManager::monitorSession() {
                 closedIds.emplace(id);
             } else if (session->isConnectTimeout()) {
                 session->shutdown();
-                Logger::ERROR << "session manager shutdown connect timeout session" << id << END;
+                Logger::ERROR << "session manager shutdown connect timeout session" << END;
             } else if (!session->isTransmitting()) {
                 session->shutdown();
-                Logger::ERROR << "session manager shutdown noRead noWrite session" << id << END;
+                Logger::ERROR << "session manager shutdown noRead noWrite session" << END;
             }
         }
     }

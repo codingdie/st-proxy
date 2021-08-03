@@ -13,7 +13,7 @@ StreamTunnel::StreamTunnel(const string &type, const string &area, bool onlyArea
 }
 
 string StreamTunnel::toString() {
-    if (type == "DIRECT") {
+    if ("DIRECT" == type) {
         return "DIRECT";
     } else {
         return type + ":" + ip + ":" + to_string(port);

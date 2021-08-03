@@ -12,13 +12,14 @@
 #include "NATUtils.h"
 #include "Session.h"
 #include "SessionManager.h"
+#include <algorithm>
+#include <map>
 #include <set>
 #include <vector>
-Session::Session(uint64_t id, tcp::socket &sock, st::proxy::Config &config)
-    : id(id), begin(time::now()), clientSock(std::move(sock)), config(config),
-      proxySock((io_context &) clientSock.get_executor().context()),
-      upStrand((io_context &) clientSock.get_executor().context()),
-      downStrand((io_context &) clientSock.get_executor().context()), readTunnelCounter(), writeTunnelCounter() {
+
+Session::Session(uint64_t id, tcp::socket &sock)
+    : stage(STAGE::CONNECTING), id(id), begin(time::now()), clientSock(std::move(sock)),
+      proxySock((io_context &) clientSock.get_executor().context()), readTunnelCounter(), writeTunnelCounter() {
     readProxyBuffer = pmalloc(bufferSize);
     readClientBuffer = pmalloc(bufferSize);
     writeProxyBuffer = pmalloc(bufferSize);
@@ -85,9 +86,9 @@ void Session::tryConnect() {
         Logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << time::now() - begin
                      << END;
         if (success) {
+            this->nextStage(STAGE::CONNECTED);
             readClient();
             readProxy();
-            this->nextStage(STAGE::CONNECTED);
         } else {
             shutdown();
         }
@@ -97,37 +98,35 @@ void Session::tryConnect() {
 void Session::selectTunnels() {
     vector<pair<StreamTunnel *, int>> tunnels;
     uint32_t distIP = distEnd.address().to_v4().to_uint();
-    for (auto it = config.tunnels.begin(); it != config.tunnels.end(); it++) {
+    for (auto it = st::proxy::Config::INSTANCE.tunnels.begin(); it != st::proxy::Config::INSTANCE.tunnels.end(); it++) {
         StreamTunnel *tunnel = *it.base();
         int score = tunnel->priority;
-        if (tunnel->onlyAreaIp) {
-            if (!AreaIpManager::isAreaIP(tunnel->area, distIP)) {
+        if (!tunnel->area.empty()) {
+            bool inArea = AreaIpManager::isAreaIP(tunnel->area, distIP);
+            if (inArea) {
+                score += 1000;
+            }
+            if (tunnel->onlyAreaIp && !inArea) {
                 continue;
             }
         }
         if (tunnel->whitelistIPs.find(distIP) != tunnel->whitelistIPs.end()) {
             score += 10000;
         };
-        tunnels.emplace_back(make_pair(tunnel, score));
+        score += (abs(rand()) % 2);
+        tunnels.push_back(make_pair(tunnel, score));
     }
-    sort(tunnels.begin(), tunnels.end(), [=](pair<StreamTunnel *, int> &a, pair<StreamTunnel *, int> &b) {
-        if (a.second != b.second) {
-            return a.second > b.second;
-        } else {
-            int ra = rand();
-            return abs(ra % 2) == 0;
-        }
-    });
-    Logger::INFO << idStr() << "selectTunnels:";
+    sort(tunnels.begin(), tunnels.end(),
+         [=](const pair<StreamTunnel *, int> &a, const pair<StreamTunnel *, int> &b) { return a.second > b.second; });
+    Logger::INFO << idStr() << "selectTunnels";
     int i = 0;
-    for (auto &pairv : tunnels) {
-        StreamTunnel *tunnel = pairv.first;
+    for (auto it = tunnels.begin(); it != tunnels.end(); it++) {
+        StreamTunnel *tunnel = it->first;
         targetTunnels.emplace_back(tunnel);
-        Logger::INFO << "[" + to_string(++i) + "]" + tunnel->toString() + "[" + to_string(pairv.second) + "]";
+        Logger::INFO << "[" + to_string(++i) + "]" + tunnel->toString() + "[" + to_string(it->second) + "]";
     }
     Logger::INFO << END;
 }
-
 void Session::directConnect(StreamTunnel *tunnel, std::function<void(bool)> completeHandler) {
     if (!initProxySocks()) {
         completeHandler(false);
@@ -232,7 +231,6 @@ void Session::setMark() {
 void Session::bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::error_code &error) {
     boost::system::error_code se;
     proxySock.shutdown(boost::asio::socket_base::shutdown_both, se);
-    proxySock.release(se);
     proxySock.close(se);
     proxySock.cancel(se);
     proxySock.open(tcp::v4());
@@ -247,51 +245,58 @@ void Session::bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::error_
 }
 
 void Session::readClient() {
+    if (stage.load() != STAGE::CONNECTED) {
+        return;
+    }
     readClientMax("readClient", bufferSize, [=](size_t size) {
         copyByte(this->readClientBuffer, this->writeProxyBuffer, size);
         writeProxy(size);
     });
 }
+
 void Session::readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler) {
+    if (!clientSock.is_open()) {
+        return;
+    }
     clientSock.async_read_some(buffer(readClientBuffer, sizeof(uint8_t) * maxSize),
-                               upStrand.wrap([=](boost::system::error_code error, size_t size) {
+                               [=](boost::system::error_code error, size_t size) {
                                    Logger::traceId = this->id;
                                    if (!error) {
                                        completeHandler(size);
                                    } else {
                                        processError(error, tag);
                                    }
-                               }));
+                               });
 }
 
 
 void Session::readProxy() {
-    uint64_t begin = time::now();
+    if (!proxySock.is_open()) {
+        return;
+    }
+    if (stage.load() != STAGE::CONNECTED) {
+        return;
+    }
     proxySock.async_read_some(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
-                              downStrand.wrap([=](boost::system::error_code error, size_t size) {
+                              [=](boost::system::error_code error, size_t size) {
                                   Logger::traceId = this->id;
                                   if (!error) {
                                       if (connectedTunnel != nullptr) {
                                           readTunnelCounter += size;
-                                          APMLogger::perf("st-proxy-stream",
-                                                          {{"direction", "down"},
-                                                           {"tunnel", connectedTunnel->toString()},
-                                                           {"clientIP", clientEnd.address().to_string()},
-                                                           {"distIP", distEnd.address().to_string()},
-                                                           {"distEndPort", to_string(distEnd.port())}},
-                                                          size);
                                       }
                                       copyByte(readProxyBuffer, writeClientBuffer, size);
                                       writeClient(size);
                                   } else {
                                       processError(error, "readProxy");
                                   }
-                              }));
+                              });
 }
+
 void Session::readProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler) {
-    proxySock.async_receive(
-            buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
-            downStrand.wrap([=](boost::system::error_code error, size_t size) { completeHandler(error); }));
+    if (proxySock.is_open()) {
+        proxySock.async_receive(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
+                                [=](boost::system::error_code error, size_t size) { completeHandler(error); });
+    }
 }
 void Session::processError(const boost::system::error_code &error, const string &TAG) {
     bool isEOF = error.category() == error::misc_category && error == error::misc_errors::eof;
@@ -304,18 +309,24 @@ void Session::processError(const boost::system::error_code &error, const string 
 
 
 void Session::closeClient(std::function<void()> completeHandler) {
-    boost::system::error_code ec;
-    clientSock.shutdown(boost::asio::socket_base::shutdown_both, ec);
-    clientSock.cancel(ec);
-    clientSock.close(ec);
-    completeHandler();
+    io_context &ctx = (io_context &) clientSock.get_executor().context();
+    ctx.post([=]() {
+        boost::system::error_code ec;
+        this->clientSock.shutdown(boost::asio::socket_base::shutdown_both, ec);
+        this->clientSock.cancel(ec);
+        this->clientSock.close(ec);
+        completeHandler();
+    });
 }
 void Session::closeServer(std::function<void()> completeHandler) {
-    boost::system::error_code ec;
-    proxySock.shutdown(boost::asio::socket_base::shutdown_both, ec);
-    proxySock.cancel(ec);
-    proxySock.close(ec);
-    completeHandler();
+    io_context &ctx = (io_context &) clientSock.get_executor().context();
+    ctx.post([=]() {
+        boost::system::error_code ec;
+        this->proxySock.shutdown(boost::asio::socket_base::shutdown_both, ec);
+        this->proxySock.cancel(ec);
+        this->proxySock.close(ec);
+        completeHandler();
+    });
 }
 
 void Session::shutdown() {
@@ -324,6 +335,9 @@ void Session::shutdown() {
     }
 }
 void Session::writeProxy(size_t writeSize) {
+    if (stage.load() != STAGE::CONNECTED) {
+        return;
+    }
     writeProxy("writeProxy", writeSize, [=]() { readClient(); });
 }
 void Session::writeProxy(const string &tag, size_t writeSize, std::function<void()> completeHandler) {
@@ -336,42 +350,43 @@ void Session::writeProxy(const string &tag, size_t writeSize, std::function<void
     });
 }
 void Session::writeProxy(size_t writeSize, std::function<void(boost::system::error_code error)> completeHandler) {
-    long begin = time::now();
+    if (!proxySock.is_open()) {
+        return;
+    }
     size_t len = sizeof(uint8_t) * writeSize;
     boost::asio::async_write(proxySock, buffer(writeProxyBuffer, len), boost::asio::transfer_at_least(len),
-                             upStrand.wrap([=](boost::system::error_code error, size_t size) {
+                             [=](boost::system::error_code error, size_t size) {
                                  Logger::traceId = this->id;
                                  if (!error) {
                                      if (connectedTunnel != nullptr) {
                                          writeTunnelCounter += size;
-                                         APMLogger::perf("st-proxy-stream",
-                                                         {{"direction", "up"},
-                                                          {"tunnel", connectedTunnel->toString()},
-                                                          {"clientIP", clientEnd.address().to_string()},
-                                                          {"distIP", distEnd.address().to_string()},
-                                                          {"distEndPort", to_string(distEnd.port())}},
-                                                         size);
                                      }
                                  }
                                  completeHandler(error);
-                             }));
+                             });
 }
 
 void Session::writeClient(size_t writeSize) {
+    if (stage.load() != STAGE::CONNECTED) {
+        return;
+    }
     writeClient("writeClient", writeSize, [=]() { readProxy(); });
 }
 
 void Session::writeClient(const string &tag, size_t writeSize, std::function<void()> completeHandler) {
     size_t len = sizeof(uint8_t) * writeSize;
+    if (!clientSock.is_open()) {
+        return;
+    }
     boost::asio::async_write(clientSock, buffer(writeClientBuffer, len), boost::asio::transfer_at_least(len),
-                             downStrand.wrap([=](boost::system::error_code error, size_t size) {
+                             [=](boost::system::error_code error, size_t size) {
                                  Logger::traceId = this->id;
                                  if (error) {
                                      processError(error, tag);
                                  } else {
                                      completeHandler();
                                  }
-                             }));
+                             });
 }
 
 
@@ -386,7 +401,7 @@ Session::~Session() {
 
 string Session::idStr() {
     return asio::addrStr(clientEnd) + "->" + asio::addrStr(distEnd) +
-           (connectedTunnel != nullptr ? +"->" + connectedTunnel->toString() : "");
+           (connectedTunnel != nullptr ? ("->" + connectedTunnel->toString()) : "");
 }
 
 string Session::transmitLog() const {
@@ -419,7 +434,7 @@ bool Session::isTransmitting() {
 bool Session::isConnectTimeout() {
     uint64_t conTimeout = st::proxy::Config::INSTANCE.connectTimeout;
     auto now = time::now();
-    return stage == Session::STAGE::CONNECTING ? (now - begin >= conTimeout) : false;
+    return stage.load() == Session::STAGE::CONNECTING ? (now - begin >= conTimeout) : false;
 }
 
 

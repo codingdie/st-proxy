@@ -16,7 +16,7 @@ using namespace st::proxy;
 
 class ProxyServer {
 public:
-    ProxyServer(Config &config);
+    ProxyServer();
 
     void start();
 
@@ -30,7 +30,6 @@ private:
     std::atomic<uint8_t> state;
     io_context ioContext;
     thread_pool pool;
-    Config &config;
     ip::tcp::acceptor *serverAcceptor;
     boost::asio::io_context::work *ioWoker;
     void accept();

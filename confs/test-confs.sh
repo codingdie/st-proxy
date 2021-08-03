@@ -3,5 +3,5 @@ if [ "$1" != "" ]; then
   rm -rf service
   ln -s $1/nat nat
   ln -s $1/service service
-  cp $1/config-example.json config.json
+  cp $1/config*.json config.json
 fi

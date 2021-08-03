@@ -10,7 +10,7 @@ static const string pidFile = "/var/run/st-proxy.pid";
 
 void startServer(const string &confPath) {
     st::proxy::Config::INSTANCE.load(confPath);
-    ProxyServer server(st::proxy::Config::INSTANCE);
+    ProxyServer server;
     server.start();
 }
 

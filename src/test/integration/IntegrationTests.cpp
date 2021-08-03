@@ -10,7 +10,7 @@ protected:
     thread *th;
     void SetUp() override {
         st::proxy::Config::INSTANCE.load("../confs/test");
-        proxyServer = new ProxyServer(st::proxy::Config::INSTANCE);
+        proxyServer = new ProxyServer();
         th = new thread([=]() { proxyServer->start(); });
         proxyServer->waitStart();
     }
@@ -32,7 +32,7 @@ protected:
 TEST_F(IntegrationTests, testCURL) {
     NATUtils::INSTANCE.addTestDomain("hanime.tv");
     string result;
-    string get = "curl -s --location  --request GET https://hanime.tv/country_code";
+    string get = "curl -s --location --connect-timeout 70 -m 70  --request GET https://hanime.tv/country_code";
     st::utils::shell::exec(get, result);
     ASSERT_STREQ(result.c_str(), "{\"country_code\":\"US\"}");
     st::utils::shell::exec(get, result);
