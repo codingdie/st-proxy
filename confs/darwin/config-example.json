@@ -1,28 +1,44 @@
 {
-  "ip": "127.0.0.1",
+  "ip": "0.0.0.0",
   "port": "40000",
+  "log": {
+    "level": 0,
+    "raw_log_server": {
+      "ip": "192.168.31.20",
+      "port": 30500,
+      "tag": "st-proxy"
+    },
+    "apm_log_server": {
+      "ip": "192.168.31.20",
+      "port": 30501
+    }
+  },
   "tunnels": [
     {
       "type": "DIRECT",
-      "area": "CN",
-      "only_area_ip": true
+      "area": "CN"
     },
     {
       "type": "SOCKS",
-      "ip": "10.235.64.49",
+      "ip": "192.168.31.20",
       "port": 1081,
-      "area": "US",
-      "real_server_host": "fm1-2.sstr-api.xyz",
-      "whitelist": "hanime.tv"
+      "area": "JP"
     },
     {
       "type": "SOCKS",
-      "ip": "10.235.64.49",
-      "port": 1080,
-      "area": "JP",
-      "real_server_host": "os2-2.sstr-api.xyz"
+      "ip": "192.168.31.20",
+      "port": 1090,
+      "area": "US",
+      "whitelist": [
+        "xx.tv"
+      ]
     }
   ],
-  "so_timeout": 10000,
-  "parallel": 16
+  "so_timeout": 600000,
+  "connect_timeout": 10000,
+  "parallel": 8,
+  "dns": "192.168.31.1",
+  "whitelist": [
+    "xxx.com"
+  ]
 }

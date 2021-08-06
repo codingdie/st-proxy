@@ -21,18 +21,19 @@ public:
     void start();
 
     void waitStart();
-    
+
     void shutdown();
 
     static ProxyServer INSTANCE;
 
 private:
     std::atomic<uint8_t> state;
-    io_context ioContext;
+    io_context bossCtx;
+    vector<io_context *> workCtxs;
     thread_pool pool;
     ip::tcp::acceptor *serverAcceptor;
-    boost::asio::io_context::work *ioWoker;
-    void accept();
+    vector<io_context::work *> wokers;
+    void accept(io_context *context);
 
     bool init();
 

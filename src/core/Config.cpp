@@ -25,9 +25,9 @@ void Config::load(const string &configPathInput) {
         this->connectTimeout = stoi(tree.get("connect_timeout", to_string(this->connectTimeout)));
         this->parallel = stoi(tree.get("parallel", to_string(this->parallel)));
         this->dns = tree.get("dns", string(this->dns));
-        auto whitelistOP = tree.get_child_optional("whitelist");
-        if (whitelistOP.is_initialized()) {
-            auto whitelistArr = whitelistOP.get();
+        auto whitelistNode = tree.get_child_optional("whitelist");
+        if (whitelistNode.is_initialized()) {
+            auto whitelistArr = whitelistNode.get();
             for (boost::property_tree::ptree::value_type &v : whitelistArr) {
                 this->whitelist.emplace_back(v.second.get_value<string>());
             }
@@ -67,13 +67,12 @@ StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
         }
     }
     StreamTunnel *streamTunnel = new StreamTunnel(type, serverIp, serverPort, area, onlyAreaIp);
-    boost::optional<basic_ptree<K, D, C> &> whitelistOP = tunnel.get_child_optional("whitelist");
-    if (whitelistOP.is_initialized()) {
-        basic_ptree<K, D, C> whitelistArr = whitelistOP.get();
+    boost::optional<basic_ptree<K, D, C> &> whitelistNode = tunnel.get_child_optional("whitelist");
+    if (whitelistNode.is_initialized()) {
+        basic_ptree<K, D, C> whitelistArr = whitelistNode.get();
         for (boost::property_tree::ptree::value_type &v : whitelistArr) {
             streamTunnel->whitelist.emplace_back(v.second.get_value<string>());
         }
     }
-    streamTunnel->priority = tunnel.get("priority", 0);
     return streamTunnel;
 }

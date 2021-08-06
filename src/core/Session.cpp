@@ -17,16 +17,17 @@
 #include <set>
 #include <vector>
 
-Session::Session(uint64_t id, tcp::socket &sock)
-    : stage(STAGE::CONNECTING), id(id), begin(time::now()), clientSock(std::move(sock)),
-      proxySock((io_context &) clientSock.get_executor().context()), readTunnelCounter(), writeTunnelCounter() {
-    readProxyBuffer = pmalloc(bufferSize);
-    readClientBuffer = pmalloc(bufferSize);
-    writeProxyBuffer = pmalloc(bufferSize);
-    writeClientBuffer = pmalloc(bufferSize);
+Session::Session(io_context &context)
+    : stage(STAGE::CONNECTING), id(id), clientSock(context), proxySock(context), readTunnelCounter(),
+      writeTunnelCounter() {
+    readProxyBuffer = st::mem::pmalloc(bufferSize).first;
+    readClientBuffer = st::mem::pmalloc(bufferSize).first;
+    writeProxyBuffer = st::mem::pmalloc(bufferSize).first;
+    writeClientBuffer = st::mem::pmalloc(bufferSize).first;
 }
 
 void Session::start() {
+    begin = time::now();
     boost::system::error_code error;
     clientEnd = clientSock.remote_endpoint(error);
     if (error) {
@@ -40,12 +41,7 @@ void Session::start() {
         shutdown();
         return;
     }
-
-    if (this->distEnd.address().to_v4().to_uint() == 0) {
-        Logger::ERROR << "get dist addr illegel!" << END;
-        shutdown();
-        return;
-    }
+    distHost = st::utils::dns::DNSReverseSHM::READ.query(distEnd.address().to_v4().to_uint());
     selectTunnels();
     if (targetTunnels.empty()) {
         Logger::ERROR << idStr() << "cal tunnels empty!" << END;
@@ -56,19 +52,18 @@ void Session::start() {
 }
 
 void Session::connetTunnels(std::function<void(bool)> completeHandler) {
-    if (tryConnectIndex < targetTunnels.size()) {
+    if (tryConnectIndex < targetTunnels.size() && this->stage == CONNECTING) {
+        StreamTunnel *tunnel = targetTunnels[tryConnectIndex];
         auto complete = [=](bool success) {
             if (success) {
-                this->connectedTunnel = targetTunnels[tryConnectIndex];
+                this->connectedTunnel = tunnel;
                 completeHandler(true);
             } else {
-                Logger::ERROR << idStr() << "connect" << targetTunnels[tryConnectIndex]->toString() << "failed! cost"
-                              << time::now() - begin << END;
+                Logger::ERROR << idStr() << "connect" << tunnel->toString() << "failed!" << END;
                 tryConnectIndex++;
                 connetTunnels(completeHandler);
             }
         };
-        StreamTunnel *tunnel = targetTunnels[tryConnectIndex];
         if (tunnel->type == "DIRECT") {
             directConnect(tunnel, complete);
         } else {
@@ -79,12 +74,10 @@ void Session::connetTunnels(std::function<void(bool)> completeHandler) {
     }
 }
 void Session::tryConnect() {
-    tryConnectIndex++;
-
     connetTunnels([=](bool success) {
         Logger::traceId = id;
-        Logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << time::now() - begin
-                     << END;
+        uint64_t connectCost = time::now() - begin;
+        Logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << connectCost << END;
         if (success) {
             this->nextStage(STAGE::CONNECTED);
             readClient();
@@ -92,6 +85,7 @@ void Session::tryConnect() {
         } else {
             shutdown();
         }
+        APMLogger::perf("st-proxy-connect", dimensions({{"success", to_string(success)}}), connectCost);
     });
 }
 
@@ -100,22 +94,19 @@ void Session::selectTunnels() {
     uint32_t distIP = distEnd.address().to_v4().to_uint();
     for (auto it = st::proxy::Config::INSTANCE.tunnels.begin(); it != st::proxy::Config::INSTANCE.tunnels.end(); it++) {
         StreamTunnel *tunnel = *it.base();
-        int score = tunnel->priority;
+        int score = 1;
         if (!tunnel->area.empty()) {
             bool inArea = AreaIpManager::isAreaIP(tunnel->area, distIP);
             if (inArea) {
                 score += 1000;
             }
-            if (tunnel->onlyAreaIp && !inArea) {
-                continue;
-            }
         }
         if (tunnel->whitelistIPs.find(distIP) != tunnel->whitelistIPs.end()) {
             score += 10000;
         };
-        score += (abs(rand()) % 2);
         tunnels.push_back(make_pair(tunnel, score));
     }
+    std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
     sort(tunnels.begin(), tunnels.end(),
          [=](const pair<StreamTunnel *, int> &a, const pair<StreamTunnel *, int> &b) { return a.second > b.second; });
     Logger::INFO << idStr() << "selectTunnels";
@@ -331,7 +322,12 @@ void Session::closeServer(std::function<void()> completeHandler) {
 
 void Session::shutdown() {
     if (nextStage(DETROYING)) {
-        closeClient([=] { closeServer([=] { nextStage(DETROYED); }); });
+        closeClient([=] {
+            closeServer([=] {
+                APMLogger::perf("st-proxy-shutdown", dimensions({}), time::now() - begin);
+                nextStage(DETROYED);
+            });
+        });
     }
 }
 void Session::writeProxy(size_t writeSize) {
@@ -393,10 +389,10 @@ void Session::writeClient(const string &tag, size_t writeSize, std::function<voi
 Session::~Session() {
     Logger::traceId = id;
     Logger::INFO << idStr() << "disconnect" << transmitLog() << END;
-    pfree(readProxyBuffer, bufferSize);
-    pfree(readClientBuffer, bufferSize);
-    pfree(writeProxyBuffer, bufferSize);
-    pfree(writeClientBuffer, bufferSize);
+    mem::pfree(readProxyBuffer, bufferSize);
+    mem::pfree(readClientBuffer, bufferSize);
+    mem::pfree(writeProxyBuffer, bufferSize);
+    mem::pfree(writeClientBuffer, bufferSize);
 }
 
 string Session::idStr() {
@@ -439,3 +435,15 @@ bool Session::isConnectTimeout() {
 
 
 bool Session::isClosed() { return stage == Session::STAGE::DETROYED; }
+
+unordered_map<string, string> Session::dimensions(unordered_map<string, string> &&dimensions) {
+    unordered_map<string, string> result = {
+            {"tunnel", connectedTunnel != nullptr ? connectedTunnel->toString() : ""},
+            {"tunnelType", connectedTunnel != nullptr ? connectedTunnel->type : ""},
+            {"tunnelIndex", connectedTunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
+            {"clientIP", clientEnd.address().to_string()},
+            {"distHost", distHost},
+            {"distEndPort", to_string(distEnd.port())}};
+    result.insert(dimensions.begin(), dimensions.end());
+    return result;
+}

@@ -7,21 +7,21 @@
 
 static mutex monitorLock;
 static mutex statsLock;
-Session *SessionManager::addNewSession(tcp::socket &socket) {
-    Session *tcpSession = new Session(++id, socket);
-    auto theId = tcpSession->id;
+Session *SessionManager::addNewSession(Session *session) {
+    session->id = ++id;
+    auto theId = session->id;
     Logger::traceId = theId;
-    tcpSession->start();
+    session->start();
     {
         lock_guard<mutex> lockGuard(statsLock);
-        connections.emplace(make_pair(theId, tcpSession));
+        connections.emplace(make_pair(theId, session));
     };
-    return tcpSession;
+    return session;
 }
 
 SessionManager::SessionManager()
     : id(0), randomRange(1024, 12000), ioContextWork(new boost::asio::io_context::work(ioContext)),
-      timerTh([&] { ioContext.run(); }), statTimer(ioContext), sessionTimer(ioContext), dnsReverseSHM() {
+      timerTh([&] { ioContext.run(); }), statTimer(ioContext), sessionTimer(ioContext) {
     randomEngine.seed(time::now());
     scheduleStats();
     scheduleMonitor();
@@ -90,7 +90,7 @@ SessionManager::~SessionManager() {
 }
 
 void SessionManager::monitorSession() {
-    dnsReverseSHM.relocate();
+    st::utils::dns::DNSReverseSHM::READ.relocate();
     set<uint64_t> closedIds;
     {
         lock_guard<mutex> monitorLockGuard(monitorLock);
@@ -106,21 +106,8 @@ void SessionManager::monitorSession() {
                 }
                 auto readInterval = session->readTunnelCounter.interval();
                 auto writeInterval = session->writeTunnelCounter.interval();
-                auto distHost = dnsReverseSHM.query(session->distEnd.address().to_v4().to_uint());
-                APMLogger::perf("st-proxy-stream",
-                                {{"direction", "down"},
-                                 {"tunnel", session->connectedTunnel->toString()},
-                                 {"clientIP", session->clientEnd.address().to_string()},
-                                 {"distHost", distHost},
-                                 {"distEndPort", to_string(session->distEnd.port())}},
-                                readInterval.second);
-                APMLogger::perf("st-proxy-stream",
-                                {{"direction", "up"},
-                                 {"tunnel", session->connectedTunnel->toString()},
-                                 {"clientIP", session->clientEnd.address().to_string()},
-                                 {"distHost", distHost},
-                                 {"distEndPort", to_string(session->distEnd.port())}},
-                                writeInterval.second);
+                APMLogger::perf("st-proxy-stream", session->dimensions({{"direction", "down"}}), readInterval.second);
+                APMLogger::perf("st-proxy-stream", session->dimensions({{"direction", "up"}}), writeInterval.second);
                 if (readInterval.second > 0) {
                     speeds[tunnelId].first.first += readInterval.first;
                     speeds[tunnelId].first.second += readInterval.second;

@@ -18,9 +18,10 @@ using namespace std;
 
 class SessionManager {
 public:
-    Session *addNewSession(tcp::socket &socket);
+    Session *addNewSession(Session *session);
 
     bool destroySession(uint64_t id);
+
     void stats();
 
     uint16_t guessUnusedSafePort();
@@ -43,7 +44,6 @@ private:
     std::thread timerTh;
     boost::asio::deadline_timer statTimer;
     boost::asio::deadline_timer sessionTimer;
-    st::utils::dns::DNSReverseSHM dnsReverseSHM;
     void scheduleStats();
     void scheduleMonitor();
     void monitorSession();

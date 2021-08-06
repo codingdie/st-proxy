@@ -23,9 +23,9 @@ namespace st {
                 auto success = st::utils::shell::exec(cm, result, error);
                 if (!result.empty()) {
                     bool nameLine = false;
-                    for (auto &str : st::utils::str::split(result, "\n")) {
+                    for (auto &str : st::utils::strutils::split(result, "\n")) {
                         if (nameLine && str.find("Address") != string::npos) {
-                            string ipStr = st::utils::str::split(str, ":")[1];
+                            string ipStr = st::utils::strutils::split(str, ":")[1];
                             boost::trim(ipStr);
                             resultIPs.emplace_back(st::utils::ipv4::strToIp(ipStr));
                         }

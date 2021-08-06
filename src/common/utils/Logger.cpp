@@ -192,7 +192,10 @@ void APMLogger::accumulateMetric(unordered_map<string, long> &metric, long value
     metric["max"] = max(value, metric["max"]);
 }
 
-void APMLogger::perf(string name, unordered_map<string, string> &&dimensions, long cost) {
+void APMLogger::perf(const string &name, unordered_map<string, string> &&dimensions, uint64_t cost) {
+    perf(name, std::move(dimensions), cost, 1);
+}
+void APMLogger::perf(const string & name, unordered_map<string, string> &&dimensions, uint64_t cost, uint64_t count) {
     boost::property_tree::ptree pt;
     for (auto it = dimensions.begin(); it != dimensions.end(); it++) {
         pt.put(it->first, it->second);
@@ -200,7 +203,7 @@ void APMLogger::perf(string name, unordered_map<string, string> &&dimensions, lo
     pt.put("name", name);
     string id = base64::encode(toJson(pt));
     std::lock_guard<std::mutex> lg(APM_STATISTICS_MUTEX);
-    accumulateMetric(STATISTICS[name][id]["count"], 1);
+    accumulateMetric(STATISTICS[name][id]["count"], count);
     accumulateMetric(STATISTICS[name][id]["cost"], cost);
 }
 void APMLogger::enable(const string udpServerIP, uint16_t udpServerPort) {

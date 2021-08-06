@@ -5,11 +5,12 @@
 #ifndef ST_FILEUTILS_H
 #define ST_FILEUTILS_H
 
-#include "Logger.h"
 #include <boost/filesystem.hpp>
 #include <fstream>
 #include <iostream>
-#include <set>
+#include <unordered_set>
+#include "Logger.h"
+
 namespace st {
     namespace utils {
         namespace file {
@@ -35,6 +36,10 @@ namespace st {
                 }
                 fileStream.close();
                 return exits;
+            }
+             static bool del(const string &path) {
+                 boost::filesystem::path bpath(path);
+                 boost::filesystem::remove(bpath);
             }
 
             static bool createIfNotExits(const string &path) {
@@ -64,7 +69,7 @@ namespace st {
                 return result;
             }
 
-            static void read(const string &path, set<string> &data) {
+            static void read(const string &path, unordered_set<string> &data) {
                 fstream fileStream;
                 fileStream.open(path, ios::in);
                 if (fileStream) {

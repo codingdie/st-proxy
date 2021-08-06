@@ -13,8 +13,8 @@ using namespace std;
 ProxyServer::ProxyServer() : state(0) {
     try {
         serverAcceptor = new ip::tcp::acceptor(
-                ioContext, tcp::endpoint(boost::asio::ip::make_address_v4(st::proxy::Config::INSTANCE.ip),
-                                         st::proxy::Config::INSTANCE.port));
+                bossCtx, tcp::endpoint(boost::asio::ip::make_address_v4(st::proxy::Config::INSTANCE.ip),
+                                       st::proxy::Config::INSTANCE.port));
         boost::asio::ip::tcp::acceptor::keep_alive option(true);
         serverAcceptor->set_option(option);
     } catch (const boost::system::system_error &e) {
@@ -114,29 +114,36 @@ void ProxyServer::start() {
     if (!init()) {
         return;
     }
-    ioWoker = new boost::asio::io_context::work(ioContext);
     vector<thread> threads;
     for (int i = 0; i < st::proxy::Config::INSTANCE.parallel; i++) {
+        boost::asio::io_context *ioContext = new boost::asio::io_context();
+        boost::asio::io_context::work *ioWoker = new boost::asio::io_context::work(*ioContext);
+        workCtxs.push_back(ioContext);
+        wokers.push_back(ioWoker);
         threads.emplace_back([=]() {
-            this->accept();
-            this->ioContext.run();
+            this->accept(ioContext);
+            ioContext->run();
         });
     }
     Logger::INFO << "st-proxy server started, listen at"
                  << st::proxy::Config::INSTANCE.ip + ":" + to_string(st::proxy::Config::INSTANCE.port) << END;
     this->state = 1;
+    bossCtx.run();
     for (auto &th : threads) {
         th.join();
     }
-    Logger::INFO << "st-proxy end" << END;
+    Logger::INFO << "st-proxy server stopped" << END;
 }
 void ProxyServer::shutdown() {
     interceptNatTraffic(false);
     this->state = 2;
-    delete ioWoker;
-    ioContext.stop();
-    Logger::INFO << "st-proxy server stoped, listen at"
-                 << st::proxy::Config::INSTANCE.ip + ":" + to_string(st::proxy::Config::INSTANCE.port) << END;
+    bossCtx.stop();
+    for (boost::asio::io_context::work *ioWoker : wokers) {
+        delete ioWoker;
+    }
+    for (boost::asio::io_context *ioContext : workCtxs) {
+        ioContext->stop();
+    }
 }
 
 void ProxyServer::waitStart() {
@@ -146,15 +153,15 @@ void ProxyServer::waitStart() {
     }
     cout << state << endl;
 }
-void ProxyServer::accept() {
-    tcp::socket rSocket(ioContext);
-    serverAcceptor->async_accept([&](boost::system::error_code error, boost::asio::ip::tcp::socket socket) {
+void ProxyServer::accept(io_context *context) {
+    Session *session = new Session(*context);
+    serverAcceptor->async_accept(session->clientSock, [=](const boost::system::error_code &error) {
         if (!serverAcceptor->is_open() || state == 2) {
             return;
         }
         if (!error) {
-            SessionManager::INSTANCE->addNewSession(socket);
+            SessionManager::INSTANCE->addNewSession(session);
         }
-        accept();
+        this->accept(context);
     });
 }

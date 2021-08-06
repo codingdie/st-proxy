@@ -18,9 +18,11 @@ public:
     StreamTunnel *connectedTunnel = nullptr;
     tcp::endpoint distEnd;
     tcp::endpoint clientEnd;
+    string distHost = "";
     std::atomic<STAGE> stage;
-
-    Session(uint64_t id, tcp::socket &sock);
+    tcp::socket clientSock;
+    tcp::socket proxySock;
+    Session(io_context &context);
 
     virtual ~Session();
 
@@ -42,9 +44,9 @@ public:
 
     bool isClosed();
 
+    unordered_map<string, string> dimensions(unordered_map<string, string> &&dimensions);
+
 private:
-    tcp::socket clientSock;
-    tcp::socket proxySock;
     vector<StreamTunnel *> targetTunnels;
     byte *readClientBuffer;
     byte *writeProxyBuffer;
@@ -52,7 +54,7 @@ private:
     byte *readProxyBuffer;
     mutex stageLock;
     int connectingTunnelIndex = 0;
-    uint64_t tryConnectIndex = -1;
+    uint64_t tryConnectIndex = 0;
     uint64_t begin = 0;
 
     void readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler);

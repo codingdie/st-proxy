@@ -1,7 +1,9 @@
-#ifndef IPV4UTILS_H
-#define IPV4UTILS_H
+#ifndef DNS_H
+#define DNS_H
 
+#include "StringUtils.h"
 #include <string>
+#include <unordered_set>
 
 using namespace std;
 namespace st {
@@ -21,8 +23,8 @@ namespace st {
 
             static uint32_t strToIp(const string &ipStr) {
                 uint32_t ip = 0L;
-                uint64_t lastPos = 0;
-                uint32_t num = 0;
+                std::size_t lastPos = 0;
+                std::size_t num = 0;
                 while (num < 4 && lastPos < ipStr.length()) {
                     auto pos = ipStr.find_first_of('.', lastPos);
                     uint32_t ipNum = stoi(ipStr.substr(lastPos, pos));
@@ -33,14 +35,26 @@ namespace st {
                 return ip;
             }
 
+            static unordered_set<uint32_t> strToIps(const string &ipStr) {
+                unordered_set<uint32_t> ips;
+                auto ipStrs = strutils::split(ipStr, ",");
+                for (string &str : ipStrs) {
+                    uint32_t ip = strToIp(str);
+                    if (ip > 0) {
+                        ips.emplace(ip);
+                    }
+                }
+                return ips;
+            }
+
             template<typename Collection>
             static string ipsToStr(const Collection &ips) {
                 string ipStr;
                 for (uint32_t ip : ips) {
                     ipStr += ipToStr(ip);
-                    ipStr += " ";
+                    ipStr += ",";
                 }
-                return ipStr;
+                return ipStr.substr(0, ipStr.length() - 1);
             }
         }// namespace ipv4
     }    // namespace utils
