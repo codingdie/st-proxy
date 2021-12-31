@@ -35,7 +35,6 @@ target_link_libraries(st-proxy ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_L
 
 include(GNUInstallDirs)
 install(TARGETS st-proxy DESTINATION bin)
-install(DIRECTORY area-ips DESTINATION etc/st)
 option(OPENWRT "Build for Openwrt support" OFF)
 
 if (OPENWRT)
