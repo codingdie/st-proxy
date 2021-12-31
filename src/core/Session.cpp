@@ -8,7 +8,6 @@
 
 #endif
 
-#include "AreaIpManager.h"
 #include "NATUtils.h"
 #include "Session.h"
 #include "SessionManager.h"
@@ -96,7 +95,7 @@ void Session::selectTunnels() {
         StreamTunnel *tunnel = *it.base();
         int score = 1;
         if (!tunnel->area.empty()) {
-            bool inArea = AreaIpManager::isAreaIP(tunnel->area, distIP);
+            bool inArea = st::areaip::isAreaIP(tunnel->area, distIP);
             if (inArea) {
                 score += 1000;
             }

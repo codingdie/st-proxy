@@ -19,7 +19,6 @@ void Config::load(const string &configPathInput) {
             exit(1);
         }
         this->ip = tree.get("ip", string(this->ip));
-        Logger::init(tree);
         this->port = stoi(tree.get("port", to_string(this->port)));
         this->soTimeout = stoi(tree.get("so_timeout", to_string(this->soTimeout)));
         this->connectTimeout = stoi(tree.get("connect_timeout", to_string(this->connectTimeout)));
@@ -39,6 +38,8 @@ void Config::load(const string &configPathInput) {
                 tunnels.emplace_back(streamTunnel);
             }
         }
+        Logger::init(tree);
+
     } else {
         Logger::INFO << "st-proxy config file not exit!" << configPath << END;
         exit(1);
@@ -65,6 +66,9 @@ StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
             Logger::ERROR << "tunnel port empty!" << END;
             exit(1);
         }
+    }
+    if (!st::areaip::loadAreaIPs(area)) {
+        exit(1);
     }
     StreamTunnel *streamTunnel = new StreamTunnel(type, serverIp, serverPort, area, onlyAreaIp);
     boost::optional<basic_ptree<K, D, C> &> whitelistNode = tunnel.get_child_optional("whitelist");

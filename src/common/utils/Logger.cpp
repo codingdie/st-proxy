@@ -129,6 +129,7 @@ UDPLogger::~UDPLogger() {
     ctx.stop();
     delete worker;
     th->join();
+    delete th;
 }
 void UDPLogger::log(const UDPLogServer &server, const string str) {
     ip::udp::endpoint serverEndpoint(ip::make_address_v4(server.ip), server.port);
@@ -195,7 +196,7 @@ void APMLogger::accumulateMetric(unordered_map<string, long> &metric, long value
 void APMLogger::perf(const string &name, unordered_map<string, string> &&dimensions, uint64_t cost) {
     perf(name, std::move(dimensions), cost, 1);
 }
-void APMLogger::perf(const string & name, unordered_map<string, string> &&dimensions, uint64_t cost, uint64_t count) {
+void APMLogger::perf(const string &name, unordered_map<string, string> &&dimensions, uint64_t cost, uint64_t count) {
     boost::property_tree::ptree pt;
     for (auto it = dimensions.begin(); it != dimensions.end(); it++) {
         pt.put(it->first, it->second);
@@ -210,13 +211,14 @@ void APMLogger::enable(const string udpServerIP, uint16_t udpServerPort) {
     UDP_LOG_SERVER.ip = udpServerIP;
     UDP_LOG_SERVER.port = udpServerPort;
     IO_CONTEXT_WORK = new boost::asio::io_context::work(IO_CONTEXT);
-    LOG_THREAD = new std::thread([]() { IO_CONTEXT.run(); });
+    LOG_THREAD = new std::thread([&]() { IO_CONTEXT.run(); });
     scheduleLog();
 }
 void APMLogger::disable() {
     IO_CONTEXT.stop();
     delete IO_CONTEXT_WORK;
     LOG_THREAD->join();
+    delete LOG_THREAD;
 }
 
 void APMLogger::scheduleLog() {
