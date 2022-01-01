@@ -271,7 +271,7 @@ void Session::readProxy() {
             buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize), [=](boost::system::error_code error, size_t size) {
                 Logger::traceId = this->id;
                 if (readTunnelCounter.totalCount == 0) {
-                    APMLogger::perf("st-proxy-first-packge", dimensions({{"sucesss", to_string(!error)}}),
+                    APMLogger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
                                     st::utils::time::now() - begin);
                 }
                 if (!error) {
