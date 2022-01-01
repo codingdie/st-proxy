@@ -296,33 +296,23 @@ void Session::processError(const boost::system::error_code &error, const string 
     }
     shutdown();
 }
-
-
-void Session::closeClient(std::function<void()> completeHandler) {
-    io_context &ctx = (io_context &) clientSock.get_executor().context();
-    ctx.post([=]() {
+void Session::close(tcp::socket &socks, std::function<void()> completeHandler) {
+    io_context &ctx = (io_context &) socks.get_executor().context();
+    boost::system::error_code ec;
+    socks.shutdown(boost::asio::socket_base::shutdown_both, ec);
+    ctx.post([=, &socks]() {
         boost::system::error_code ec;
-        this->clientSock.shutdown(boost::asio::socket_base::shutdown_both, ec);
-        this->clientSock.cancel(ec);
-        this->clientSock.close(ec);
-        completeHandler();
-    });
-}
-void Session::closeServer(std::function<void()> completeHandler) {
-    io_context &ctx = (io_context &) clientSock.get_executor().context();
-    ctx.post([=]() {
-        boost::system::error_code ec;
-        this->proxySock.shutdown(boost::asio::socket_base::shutdown_both, ec);
-        this->proxySock.cancel(ec);
-        this->proxySock.close(ec);
+        socks.shutdown(boost::asio::socket_base::shutdown_both, ec);
+        socks.cancel(ec);
+        socks.close(ec);
         completeHandler();
     });
 }
 
 void Session::shutdown() {
     if (nextStage(DETROYING)) {
-        closeClient([=] {
-            closeServer([=] {
+        close(clientSock, [=] {
+            close(clientSock, [=] {
                 APMLogger::perf("st-proxy-shutdown", dimensions({}), time::now() - begin);
                 nextStage(DETROYED);
             });
@@ -439,6 +429,7 @@ unordered_map<string, string> Session::dimensions(unordered_map<string, string> 
     unordered_map<string, string> result = {
             {"tunnel", connectedTunnel != nullptr ? connectedTunnel->toString() : ""},
             {"tunnelType", connectedTunnel != nullptr ? connectedTunnel->type : ""},
+            {"tunnelArea", connectedTunnel != nullptr ? connectedTunnel->area : ""},
             {"tunnelIndex", connectedTunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
             {"clientIP", clientEnd.address().to_string()},
             {"distHost", distHost},

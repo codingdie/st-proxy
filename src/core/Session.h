@@ -83,9 +83,7 @@ private:
 
     void selectTunnels();
 
-    void closeClient(std::function<void()> completeHandler);
-
-    void closeServer(std::function<void()> completeHandler);
+    void close(tcp::socket &socks, std::function<void()> completeHandler);
 
     void bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::error_code &error);
 
