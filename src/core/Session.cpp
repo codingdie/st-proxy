@@ -316,7 +316,7 @@ void Session::close(tcp::socket &socks, std::function<void()> completeHandler) {
 void Session::shutdown() {
     if (nextStage(DETROYING)) {
         close(clientSock, [=] {
-            close(clientSock, [=] {
+            close(proxySock, [=] {
                 APMLogger::perf("st-proxy-shutdown", dimensions({}), time::now() - begin);
                 nextStage(DETROYED);
             });
