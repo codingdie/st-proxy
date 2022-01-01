@@ -90,7 +90,7 @@ SessionManager::~SessionManager() {
 }
 
 void SessionManager::monitorSession() {
-    st::utils::dns::DNSReverseSHM::READ.relocate();
+    st::dns::SHM::read().relocate();
     set<uint64_t> closedIds;
     {
         lock_guard<mutex> monitorLockGuard(monitorLock);

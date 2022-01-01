@@ -56,6 +56,8 @@ private:
     int connectingTunnelIndex = 0;
     uint64_t tryConnectIndex = 0;
     uint64_t begin = 0;
+    string preferArea = "";
+
 
     void readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler);
 
@@ -97,7 +99,8 @@ private:
 
 #ifdef linux
 
-    void setMark();
+    void setMark(uint32_t mark);
+    uint32_t getMark(int fd);
 
 #endif
 };

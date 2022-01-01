@@ -8,6 +8,7 @@ if [ "$1" != "clean" ]; then
   ipset add -! st-proxy-whitelist 192.168.0.0/16
   ipset add -! st-proxy-whitelist 224.0.0.0/4
   ipset add -! st-proxy-whitelist 240.0.0.0/4
+  ipset add -! st-proxy-test 8.8.8.8
   # Create new chain
   iptables -t nat -N st-proxy
   iptables -t nat -A st-proxy -m set --match-set st-proxy-whitelist dst -j RETURN

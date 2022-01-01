@@ -45,9 +45,9 @@ bool ProxyServer::addNatWhitelist() const {
             int tryTime = 0;
             while (tryTime++ < 3) {
                 if (st::proxy::Config::INSTANCE.dns.empty()) {
-                    ips = dns::query(realServerHost);
+                    ips = st::utils::dns::query(realServerHost);
                 } else {
-                    ips = dns::query(st::proxy::Config::INSTANCE.dns, realServerHost);
+                    ips = st::utils::dns::query(st::proxy::Config::INSTANCE.dns, realServerHost);
                 }
                 if (ips.empty()) {
                     Logger::INFO << "addNatWhitelist resolve" << realServerHost << "failed! tryTime:" << tryTime << END;
@@ -81,9 +81,9 @@ bool ProxyServer::addTunnelWhitelist() {
             if (!host.empty()) {
                 vector<uint32_t> ips;
                 if (st::proxy::Config::INSTANCE.dns.empty()) {
-                    ips = dns::query(host);
+                    ips = st::utils::dns::query(host);
                 } else {
-                    ips = dns::query(st::proxy::Config::INSTANCE.dns, host);
+                    ips = st::utils::dns::query(st::proxy::Config::INSTANCE.dns, host);
                 }
                 Logger::INFO << "addTunnelWhitelist" << host << ipv4::ipsToStr(ips) << END;
                 for (auto it = ips.begin(); it != ips.end(); it++) {

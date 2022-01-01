@@ -40,7 +40,10 @@ void Session::start() {
         shutdown();
         return;
     }
-    distHost = st::utils::dns::DNSReverseSHM::READ.query(distEnd.address().to_v4().to_uint());
+    distHost = st::dns::SHM::read().query(distEnd.address().to_v4().to_uint());
+    auto realDistPort = st::dns::SHM::read().getRealPort(distEnd.address().to_v4().to_uint(), distEnd.port());
+    this->distEnd = tcp::endpoint(make_address_v4(this->distEnd.address().to_v4().to_string()), realDistPort.second);
+    this->preferArea = realDistPort.first;
     selectTunnels();
     if (targetTunnels.empty()) {
         Logger::ERROR << idStr() << "cal tunnels empty!" << END;
@@ -93,6 +96,7 @@ void Session::selectTunnels() {
     uint32_t distIP = distEnd.address().to_v4().to_uint();
     for (auto it = st::proxy::Config::INSTANCE.tunnels.begin(); it != st::proxy::Config::INSTANCE.tunnels.end(); it++) {
         StreamTunnel *tunnel = *it.base();
+
         int score = 1;
         if (!tunnel->area.empty()) {
             bool inArea = st::areaip::isAreaIP(tunnel->area, distIP);
@@ -103,12 +107,15 @@ void Session::selectTunnels() {
         if (tunnel->whitelistIPs.find(distIP) != tunnel->whitelistIPs.end()) {
             score += 10000;
         };
+        if (tunnel->area.compare(preferArea) == 0) {
+            score += 1000000;
+        }
         tunnels.push_back(make_pair(tunnel, score));
     }
     std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
     sort(tunnels.begin(), tunnels.end(),
          [=](const pair<StreamTunnel *, int> &a, const pair<StreamTunnel *, int> &b) { return a.second > b.second; });
-    Logger::INFO << idStr() << "selectTunnels";
+    Logger::INFO << idStr() << "prefer" << preferArea << "selectTunnels";
     int i = 0;
     for (auto it = tunnels.begin(); it != tunnels.end(); it++) {
         StreamTunnel *tunnel = it->first;
@@ -200,20 +207,30 @@ bool Session::initProxySocks() {
     proxySock.set_option(keepAlive, se);
     proxySock.set_option(noDelay, se);
 #ifdef linux
-    setMark();
+    setMark(1024);
 #endif
     return true;
 }
 
 #ifdef linux
 
-void Session::setMark() {
+void Session::setMark(uint32_t mark) {
     int fd = proxySock.native_handle();
-    int mark = 1024;
     int error = setsockopt(fd, SOL_SOCKET, SO_MARK, &mark, sizeof(mark));
     if (error == -1) {
         Logger::ERROR << "set mark error" << strerror(errno) << Logger::ENDL;
     }
+}
+
+
+uint32_t Session::getMark(int fd) {
+    uint32_t mark = 0;
+    socklen_t len = sizeof(mark);
+    int error = getsockopt(fd, SOL_SOCKET, SO_MARK, &mark, &len);
+    if (error != -1) {
+        return mark;
+    }
+    return -1;
 }
 
 #endif
