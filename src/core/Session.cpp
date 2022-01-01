@@ -267,19 +267,23 @@ void Session::readProxy() {
     if (stage.load() != STAGE::CONNECTED) {
         return;
     }
-    proxySock.async_read_some(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
-                              [=](boost::system::error_code error, size_t size) {
-                                  Logger::traceId = this->id;
-                                  if (!error) {
-                                      if (connectedTunnel != nullptr) {
-                                          readTunnelCounter += size;
-                                      }
-                                      copyByte(readProxyBuffer, writeClientBuffer, size);
-                                      writeClient(size);
-                                  } else {
-                                      processError(error, "readProxy");
-                                  }
-                              });
+    proxySock.async_read_some(
+            buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize), [=](boost::system::error_code error, size_t size) {
+                Logger::traceId = this->id;
+                if (readTunnelCounter.totalCount == 0) {
+                    APMLogger::perf("st-proxy-first-packge", dimensions({{"sucesss", to_string(!error)}}),
+                                    st::utils::time::now() - begin);
+                }
+                if (!error) {
+                    if (connectedTunnel != nullptr) {
+                        readTunnelCounter += size;
+                    }
+                    copyByte(readProxyBuffer, writeClientBuffer, size);
+                    writeClient(size);
+                } else {
+                    processError(error, "readProxy");
+                }
+            });
 }
 
 void Session::readProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler) {
