@@ -1,7 +1,7 @@
 #include "DNSReverseSHM.h"
 using namespace st::utils::dns;
 DNSReverseSHM DNSReverseSHM::READ;
-DNSReverseSHM::DNSReverseSHM(bool readOnly) : readOnly(readOnly) {
+DNSReverseSHM::DNSReverseSHM(bool readOnly) : readOnly(readOnly), initSHMSuccess(false) {
     try {
         if (!readOnly) {
             boost::interprocess::shared_memory_object::remove(NAME.c_str());
@@ -33,10 +33,11 @@ DNSReverseSHM::~DNSReverseSHM() {
 }
 void DNSReverseSHM::relocate() {
     try {
+        initSHMSuccess = false;
         if (segment != nullptr) {
             delete segment;
         }
-        segment = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, NAME.c_str());
+        segment = new boost::interprocess::managed_shared_memory(boost::interprocess::open_read_only, NAME.c_str());
         dnsMap = segment->find<shm_map>(REVERSE_NAME.c_str()).first;
         initSHMSuccess = true;
     } catch (const std::exception &e) {
@@ -45,7 +46,7 @@ void DNSReverseSHM::relocate() {
     }
 }
 std::string DNSReverseSHM::query(uint32_t ip) {
-    if (!initSHMSuccess) {
+    if (!initSHMSuccess.load()) {
         return st::utils::ipv4::ipToStr(ip);
     }
     auto it = dnsMap->find(ip);

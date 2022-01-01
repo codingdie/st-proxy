@@ -35,7 +35,7 @@ namespace st {
                 boost::interprocess::managed_shared_memory *segment = nullptr;
                 void_allocator *alloc_inst = nullptr;
                 shm_map *dnsMap = nullptr;
-                bool initSHMSuccess = false;
+                std::atomic<bool> initSHMSuccess;
 
             public:
                 static DNSReverseSHM READ;
