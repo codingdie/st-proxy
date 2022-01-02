@@ -115,7 +115,10 @@ void Session::selectTunnels() {
     std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
     sort(tunnels.begin(), tunnels.end(),
          [=](const pair<StreamTunnel *, int> &a, const pair<StreamTunnel *, int> &b) { return a.second > b.second; });
-    Logger::INFO << idStr() << "prefer" << preferArea << "selectTunnels";
+    Logger::INFO << idStr() << "selectTunnels";
+    if (!preferArea.empty()) {
+        Logger::INFO << "prefer" << preferArea;
+    }
     int i = 0;
     for (auto it = tunnels.begin(); it != tunnels.end(); it++) {
         StreamTunnel *tunnel = it->first;
