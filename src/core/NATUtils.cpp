@@ -101,13 +101,12 @@ bool NATUtils::addToIPSet(string name, uint32_t ip) {
 #endif
 #ifdef linux
     auto command = "/usr/sbin/ipset add -! " + name + " " + ipv4::ipToStr(ip);
-    Logger::INFO << command << END;
     bool success = shell::exec(command, result, error);
 #endif
     if (!success) {
         Logger::ERROR << "addToIPSet error!" << name << ipv4::ipToStr(ip) << error << END;
     } else {
-        Logger::INFO << "addToIPSet success!" << name << ipv4::ipToStr(ip) << result << END;
+        Logger::DEBUG << "addToIPSet success!" << name << ipv4::ipToStr(ip) << result << END;
     }
     return success;
 }

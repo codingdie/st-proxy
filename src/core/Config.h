@@ -39,6 +39,9 @@ namespace st {
             Config() = default;
 
             void load(const string &configPathInput);
+            vector<uint32_t> resovleHost(const string &domain) const;
+
+        private:
             template<class K, class D, class C>
             StreamTunnel *parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const;
         };

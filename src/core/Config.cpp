@@ -28,7 +28,8 @@ void Config::load(const string &configPathInput) {
         if (whitelistNode.is_initialized()) {
             auto whitelistArr = whitelistNode.get();
             for (boost::property_tree::ptree::value_type &v : whitelistArr) {
-                this->whitelist.emplace_back(v.second.get_value<string>());
+                auto domain = v.second.get_value<string>();
+                this->whitelist.emplace_back(domain);
             }
         }
         auto tunnelNodes = tree.get_child("tunnels");
@@ -75,8 +76,28 @@ StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
     if (whitelistNode.is_initialized()) {
         basic_ptree<K, D, C> whitelistArr = whitelistNode.get();
         for (boost::property_tree::ptree::value_type &v : whitelistArr) {
-            streamTunnel->whitelist.emplace_back(v.second.get_value<string>());
+            string domain = v.second.get_value<string>();
+            streamTunnel->whitelist.emplace_back(domain);
+            auto ips = resovleHost(domain);
+            if (ips.size() == 0) {
+                Logger::ERROR << "resovle tunnel whitelist failed!" << streamTunnel->toString() << domain << END;
+                exit(1);
+            }
+            for (auto ip : ips) {
+                streamTunnel->whitelistIPs.emplace(ip);
+            }
         }
     }
     return streamTunnel;
+}
+vector<uint32_t> Config::resovleHost(const string &domain) const {
+    io_context ioContext;
+    vector<uint32_t> ips = st::utils::dns::query(domain);
+    if (!dns.empty()) {
+        vector<uint32_t> preferIPs = st::utils::dns::query(dns, domain);
+        if (preferIPs.size() > 0) {
+            ips = preferIPs;
+        }
+    }
+    return ips;
 }

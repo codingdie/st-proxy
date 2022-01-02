@@ -29,9 +29,7 @@ bool ProxyServer::init() {
     if (interceptNatTraffic(false)) {
         if (addNatWhitelist()) {
             if (interceptNatTraffic(true)) {
-                if (addTunnelWhitelist()) {
-                    return true;
-                }
+                return true;
             }
         }
     };
@@ -44,11 +42,7 @@ bool ProxyServer::addNatWhitelist() const {
             vector<uint32_t> ips;
             int tryTime = 0;
             while (tryTime++ < 3) {
-                if (st::proxy::Config::INSTANCE.dns.empty()) {
-                    ips = st::utils::dns::query(realServerHost);
-                } else {
-                    ips = st::utils::dns::query(st::proxy::Config::INSTANCE.dns, realServerHost);
-                }
+                ips = st::proxy::Config::INSTANCE.resovleHost(realServerHost);
                 if (ips.empty()) {
                     Logger::INFO << "addNatWhitelist resolve" << realServerHost << "failed! tryTime:" << tryTime << END;
                     this_thread::sleep_for(std::chrono::seconds(10));
@@ -65,46 +59,21 @@ bool ProxyServer::addNatWhitelist() const {
                     return false;
                 }
             }
-            Logger::INFO << "addToWhitelist" << realServerHost << ipv4::ipsToStr(ips) << END;
+            Logger::INFO << "addNatWhitelist" << realServerHost << ipv4::ipsToStr(ips) << END;
         }
     }
     return true;
 }
 
-
-bool ProxyServer::addTunnelWhitelist() {
-    io_context ioContext;
-    tcp::resolver slv(ioContext);
-    for (auto it = st::proxy::Config::INSTANCE.tunnels.begin(); it != st::proxy::Config::INSTANCE.tunnels.end(); it++) {
-        auto streamTunnel = *it.base();
-        for (auto host : streamTunnel->whitelist) {
-            if (!host.empty()) {
-                vector<uint32_t> ips;
-                if (st::proxy::Config::INSTANCE.dns.empty()) {
-                    ips = st::utils::dns::query(host);
-                } else {
-                    ips = st::utils::dns::query(st::proxy::Config::INSTANCE.dns, host);
-                }
-                Logger::INFO << "addTunnelWhitelist" << host << ipv4::ipsToStr(ips) << END;
-                for (auto it = ips.begin(); it != ips.end(); it++) {
-                    streamTunnel->whitelistIPs.emplace(*it);
-                }
-            }
-        }
-    }
-    return true;
-}
 
 bool ProxyServer::interceptNatTraffic(bool intercept) const {
     string command = "sh " + st::proxy::Config::INSTANCE.baseConfDir + "/nat/init.sh " + (intercept ? "" : "clean");
-    Logger::INFO << command << END;
     string result;
     string error;
     if (shell::exec(command, result, error)) {
-        Logger::DEBUG << result << END;
         return true;
     } else {
-        Logger::ERROR << error << END;
+        Logger::ERROR << "interceptNatTraffic eror!" << error << END;
         return false;
     }
 }

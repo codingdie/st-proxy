@@ -1,6 +1,4 @@
-scriptDir=$(
-  cd $(dirname $0)
-  pwd
-)
+cd $(dirname $0)
 ulimit -n 65000
-sh ${scriptDir}/rule.sh $1
+chmod +x rule.sh
+./rule.sh $1 > /dev/null

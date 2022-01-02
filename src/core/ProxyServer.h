@@ -40,7 +40,6 @@ private:
     bool interceptNatTraffic(bool Intercept) const;
 
     bool addNatWhitelist() const;
-    bool addTunnelWhitelist();
 };
 
 
