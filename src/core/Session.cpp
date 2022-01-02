@@ -457,6 +457,7 @@ unordered_map<string, string> Session::dimensions(unordered_map<string, string> 
             {"tunnelIndex", connectedTunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
             {"clientIP", clientEnd.address().to_string()},
             {"distHost", distHost},
+            {"distIP", distEnd.address().to_string()},
             {"distEndPort", to_string(distEnd.port())}};
     result.insert(dimensions.begin(), dimensions.end());
     return result;
