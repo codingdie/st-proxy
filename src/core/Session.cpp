@@ -293,7 +293,11 @@ void Session::readProxy() {
                 if (readTunnelCounter.totalCount == 0) {
                     APMLogger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
                                     st::utils::time::now() - begin);
+                    if(error){
+                        Logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
+                    }
                 }
+                
                 if (!error) {
                     if (connectedTunnel != nullptr) {
                         readTunnelCounter += size;
