@@ -104,7 +104,7 @@ void Session::selectTunnels() {
                 score += 1000;
             }
         }
-        if (tunnel->whitelistIPs.find(distIP) != tunnel->whitelistIPs.end()) {
+        if (tunnel->inWhitelist(distIP) || tunnel->inWhitelist(distHost)) {
             score += 10000;
         };
         if (tunnel->area.compare(preferArea) == 0) {

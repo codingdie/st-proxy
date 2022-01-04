@@ -10,11 +10,18 @@
       "type": "SOCKS",
       "ip": "192.168.31.20",
       "port": 1090,
-      "area": "US"
+      "area": "US",
+      "whitelist": [
+        "*.google.com"
+      ]
     }
   ],
+  "log": {
+    "level": 0
+  },
   "so_timeout": 10000,
   "parallel": 16,
+  "dns":"127.0.0.1",
   "whitelist": [
     "baidu.com",
     "www.baidu.com"

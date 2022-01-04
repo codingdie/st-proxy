@@ -30,13 +30,9 @@ protected:
 };
 
 TEST_F(IntegrationTests, testCURL) {
-    NATUtils::INSTANCE.addTestDomain("hanime.tv");
+    NATUtils::INSTANCE.addTestDomain("www.google.com");
     string result;
-    string get = "curl -s --location --connect-timeout 70 -m 70  --request GET https://hanime.tv/country_code";
-    st::utils::shell::exec(get, result);
-    ASSERT_STREQ(result.c_str(), "{\"country_code\":\"US\"}");
-    st::utils::shell::exec(get, result);
-    ASSERT_STREQ(result.c_str(), "{\"country_code\":\"US\"}");
-    st::utils::shell::exec(get, result);
-    ASSERT_STREQ(result.c_str(), "{\"country_code\":\"US\"}");
+    st::utils::shell::exec(
+            "curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com", result);
+    ASSERT_TRUE(result.length()>0);
 }

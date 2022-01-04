@@ -122,10 +122,10 @@ void SessionManager::monitorSession() {
                 closedIds.emplace(id);
             } else if (session->isConnectTimeout()) {
                 session->shutdown();
-                Logger::ERROR << "session manager shutdown connect timeout session" << END;
+                Logger::ERROR << "session manager shutdown connect timeout session" << session->idStr() << END;
             } else if (!session->isTransmitting()) {
                 session->shutdown();
-                Logger::ERROR << "session manager shutdown noRead noWrite session" << END;
+                Logger::ERROR << "session manager shutdown noRead noWrite session" << session->idStr() << END;
             }
         }
     }

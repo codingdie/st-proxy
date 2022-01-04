@@ -16,14 +16,18 @@ public:
     string ip = "";
     int port = 0;
     string area = "";
-    vector<string> whitelist;
+    set<string> whitelist;
     set<uint32_t> whitelistIPs;
+
     string toString();
 
     StreamTunnel(const string &type, const string &area);
 
     StreamTunnel(const string &type, const string &ip, int port, const string &area,
                    bool onlyAreaIp);
+
+    bool inWhitelist(const string &domain);
+    bool inWhitelist(const uint32_t ip);
 };
 
 

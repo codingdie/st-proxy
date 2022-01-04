@@ -37,30 +37,11 @@ bool ProxyServer::init() {
 }
 
 bool ProxyServer::addNatWhitelist() const {
-    for (auto realServerHost : st::proxy::Config::INSTANCE.whitelist) {
-        if (!realServerHost.empty()) {
-            vector<uint32_t> ips;
-            int tryTime = 0;
-            while (tryTime++ < 3) {
-                ips = st::proxy::Config::INSTANCE.resovleHost(realServerHost);
-                if (ips.empty()) {
-                    Logger::INFO << "addNatWhitelist resolve" << realServerHost << "failed! tryTime:" << tryTime << END;
-                    this_thread::sleep_for(std::chrono::seconds(10));
-                }
-            }
-            if (ips.empty()) {
-                Logger::ERROR << "addNatWhitelist final error! resolve domain failed!" << realServerHost << END;
-                return false;
-            }
-
-            for (auto it = ips.begin(); it != ips.end(); it++) {
-                auto ip = *it;
-                if (!NATUtils::INSTANCE.addToWhitelist(ip)) {
-                    return false;
-                }
-            }
-            Logger::INFO << "addNatWhitelist" << realServerHost << ipv4::ipsToStr(ips) << END;
+    for (auto ip : st::proxy::Config::INSTANCE.whitelistIPs) {
+        if (!NATUtils::INSTANCE.addToWhitelist(ip)) {
+            return false;
         }
+        Logger::INFO << "addNatWhitelist" << ipv4::ipToStr(ip) << END;
     }
     return true;
 }

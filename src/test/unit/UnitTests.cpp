@@ -19,3 +19,12 @@ TEST(UnitTests, testArea2Mark) {
     area = st::areaip::code2Area(mark);
     ASSERT_STREQ("US", area.c_str());
 }
+
+TEST(UnitTests, testIPStr) {
+    ASSERT_TRUE(st::utils::ipv4::strToIp("1.b.c.d") == 0);
+    ASSERT_TRUE(st::utils::ipv4::strToIp("1.1.1.1") == 16843009);
+    ASSERT_TRUE(st::utils::ipv4::strToIp("112.2.1.1") == 1879179521);
+    ASSERT_TRUE(st::utils::ipv4::strToIp("1.1.1.1.1") == 0);
+    ASSERT_TRUE(st::utils::ipv4::strToIp(".1.1.1.1") == 0);
+    ASSERT_TRUE(st::utils::ipv4::strToIp("baidu.com") == 0);
+}

@@ -35,15 +35,17 @@ namespace st {
             vector<StreamTunnel *> tunnels;
             int parallel = 16;
             string dns = "";
-            vector<string> whitelist;
+            set<string> whitelist;
+            set<uint32_t> whitelistIPs;
             Config() = default;
 
             void load(const string &configPathInput);
-            vector<uint32_t> resovleHost(const string &domain) const;
+            vector<uint32_t> resovleDomain(const string &domain) const;
 
         private:
             template<class K, class D, class C>
             StreamTunnel *parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const;
+            set<uint32_t> parseWhitelistToIPs(const set<string> &whitelist) const;
         };
     };// namespace proxy
 }// namespace st
