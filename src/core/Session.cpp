@@ -98,16 +98,14 @@ void Session::selectTunnels() {
         StreamTunnel *tunnel = *it.base();
 
         int score = 1;
-        if (!tunnel->area.empty()) {
-            bool inArea = st::areaip::isAreaIP(tunnel->area, distIP);
-            if (inArea) {
-                score += 1000;
-            }
+        bool inArea = st::areaip::isAreaIP(tunnel->areas, distIP);
+        if (inArea) {
+            score += 1000;
         }
         if (tunnel->inWhitelist(distIP) || tunnel->inWhitelist(distHost)) {
             score += 10000;
         };
-        if (tunnel->area.compare(preferArea) == 0) {
+        if ((*tunnel->areas.begin()).compare(preferArea) == 0) {
             score += 1000000;
         }
         tunnels.push_back(make_pair(tunnel, score));
@@ -293,11 +291,11 @@ void Session::readProxy() {
                 if (readTunnelCounter.totalCount == 0) {
                     APMLogger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
                                     st::utils::time::now() - begin);
-                    if(error){
+                    if (error) {
                         Logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
                     }
                 }
-                
+
                 if (!error) {
                     if (connectedTunnel != nullptr) {
                         readTunnelCounter += size;
@@ -457,7 +455,7 @@ unordered_map<string, string> Session::dimensions(unordered_map<string, string> 
     unordered_map<string, string> result = {
             {"tunnel", connectedTunnel != nullptr ? connectedTunnel->toString() : ""},
             {"tunnelType", connectedTunnel != nullptr ? connectedTunnel->type : ""},
-            {"tunnelArea", connectedTunnel != nullptr ? connectedTunnel->area : ""},
+            {"tunnelArea", connectedTunnel != nullptr ? connectedTunnel->areas[0] : ""},
             {"tunnelIndex", connectedTunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
             {"clientIP", clientEnd.address().to_string()},
             {"distHost", distHost},

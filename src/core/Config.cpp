@@ -72,8 +72,6 @@ set<uint32_t> Config::parseWhitelistToIPs(const set<string> &whitelist) const {
 template<class K, class D, class C>
 StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
     string type = tunnel.get("type", "DIRECT");
-    string area = tunnel.get("area", "");
-    bool onlyAreaIp = tunnel.get("only_area_ip", false);
     if (type.empty()) {
         Logger::ERROR << "tunnel type empty!" << END;
         exit(1);
@@ -90,10 +88,19 @@ StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
             exit(1);
         }
     }
-    if (!st::areaip::loadAreaIPs(area)) {
-        exit(1);
+
+    StreamTunnel *streamTunnel = new StreamTunnel(type, serverIp, serverPort);
+    boost::optional<basic_ptree<K, D, C> &> areaListNode = tunnel.get_child_optional("areas");
+    if (areaListNode.is_initialized()) {
+        basic_ptree<K, D, C> arealistArr = areaListNode.get();
+        for (boost::property_tree::ptree::value_type &v : arealistArr) {
+            string area = v.second.get_value<string>();
+            if (!st::areaip::loadAreaIPs(area)) {
+                exit(1);
+            }
+            streamTunnel->areas.emplace_back(area);
+        }
     }
-    StreamTunnel *streamTunnel = new StreamTunnel(type, serverIp, serverPort, area, onlyAreaIp);
     boost::optional<basic_ptree<K, D, C> &> whitelistNode = tunnel.get_child_optional("whitelist");
     if (whitelistNode.is_initialized()) {
         basic_ptree<K, D, C> whitelistArr = whitelistNode.get();

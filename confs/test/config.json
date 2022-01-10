@@ -4,13 +4,17 @@
   "tunnels": [
     {
       "type": "DIRECT",
-      "area": "CN"
+      "areas": [
+        "CN"
+      ]
     },
     {
       "type": "SOCKS",
       "ip": "192.168.31.20",
       "port": 1090,
-      "area": "US",
+      "areas": [
+        "US"
+      ],
       "whitelist": [
         "*.google.com"
       ]
@@ -21,7 +25,7 @@
   },
   "so_timeout": 10000,
   "parallel": 16,
-  "dns":"127.0.0.1",
+  "dns": "127.0.0.1",
   "whitelist": [
     "baidu.com",
     "www.baidu.com"

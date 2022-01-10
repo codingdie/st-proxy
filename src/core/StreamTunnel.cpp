@@ -4,10 +4,8 @@
 
 #include "StreamTunnel.h"
 
-StreamTunnel::StreamTunnel(const string &type, const string &ip, int port, const string &area, bool onlyAreaIp)
-    : type(type), ip(ip), port(port), area(area) {}
+StreamTunnel::StreamTunnel(const string &type, const string &ip, int port) : type(type), ip(ip), port(port) {}
 
-StreamTunnel::StreamTunnel(const string &type, const string &area) : type(type), area(area) {}
 
 string StreamTunnel::toString() {
     if (type.compare("DIRECT") == 0) {

@@ -98,7 +98,7 @@ void ProxyServer::shutdown() {
 
 void ProxyServer::waitStart() {
     cout << state << endl;
-    while (state == 0) {
+    while (state.load() != 1) {
         std::this_thread::sleep_for(std::chrono::seconds(3));
     }
     cout << state << endl;
