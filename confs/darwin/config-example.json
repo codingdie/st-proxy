@@ -16,25 +16,19 @@
   "tunnels": [
     {
       "type": "DIRECT",
-      "areas": [
-        "CN"
-      ]
+      "area": "CN"
     },
     {
       "type": "SOCKS",
       "ip": "192.168.31.20",
       "port": 1081,
-      "areas": [
-        "JP"
-      ]
+      "area": "JP"
     },
     {
       "type": "SOCKS",
       "ip": "192.168.31.20",
       "port": 1090,
-      "areas": [
-        "US"
-      ],
+      "area": "US",
       "whitelist": [
         "xx.tv"
       ]

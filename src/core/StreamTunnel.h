@@ -15,7 +15,8 @@ public:
     string type = "DIRECT";
     string ip = "";
     int port = 0;
-    vector<string> areas;
+    string area = "";
+    vector<string> proxyAreas;
     set<string> whitelist;
     set<uint32_t> whitelistIPs;
 

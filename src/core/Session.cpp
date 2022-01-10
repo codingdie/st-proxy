@@ -98,14 +98,14 @@ void Session::selectTunnels() {
         StreamTunnel *tunnel = *it.base();
 
         int score = 1;
-        bool inArea = st::areaip::isAreaIP(tunnel->areas, distIP);
+        bool inArea = st::areaip::isAreaIP(tunnel->proxyAreas, distIP);
         if (inArea) {
             score += 1000;
         }
         if (tunnel->inWhitelist(distIP) || tunnel->inWhitelist(distHost)) {
             score += 10000;
         };
-        if ((*tunnel->areas.begin()).compare(preferArea) == 0) {
+        if (tunnel->area.compare(preferArea) == 0) {
             score += 1000000;
         }
         tunnels.push_back(make_pair(tunnel, score));
@@ -455,7 +455,7 @@ unordered_map<string, string> Session::dimensions(unordered_map<string, string> 
     unordered_map<string, string> result = {
             {"tunnel", connectedTunnel != nullptr ? connectedTunnel->toString() : ""},
             {"tunnelType", connectedTunnel != nullptr ? connectedTunnel->type : ""},
-            {"tunnelArea", connectedTunnel != nullptr ? connectedTunnel->areas[0] : ""},
+            {"tunnelArea", connectedTunnel != nullptr ? connectedTunnel->area : ""},
             {"tunnelIndex", connectedTunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
             {"clientIP", clientEnd.address().to_string()},
             {"distHost", distHost},
