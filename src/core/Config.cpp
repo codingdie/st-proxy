@@ -91,20 +91,23 @@ StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
 
     StreamTunnel *streamTunnel = new StreamTunnel(type, serverIp, serverPort);
     streamTunnel->area = tunnel.get("area", "");
-    boost::optional<basic_ptree<K, D, C> &> areaListNode = tunnel.get_child_optional("areas");
+    boost::optional<basic_ptree<K, D, C> &> areaListNode = tunnel.get_child_optional("proxy_areas");
     if (areaListNode.is_initialized()) {
         basic_ptree<K, D, C> arealistArr = areaListNode.get();
         for (boost::property_tree::ptree::value_type &v : arealistArr) {
             string area = v.second.get_value<string>();
-            if (!st::areaip::loadAreaIPs(area)) {
-                exit(1);
-            }
             streamTunnel->proxyAreas.emplace_back(area);
         }
     }
     if (streamTunnel->area.length() > 0) {
         streamTunnel->proxyAreas.insert(streamTunnel->proxyAreas.begin(), streamTunnel->area);
     }
+    for (auto &area : streamTunnel->proxyAreas) {
+        if (!st::areaip::loadAreaIPs(area)) {
+            exit(1);
+        }
+    }
+
     boost::optional<basic_ptree<K, D, C> &> whitelistNode = tunnel.get_child_optional("whitelist");
     if (whitelistNode.is_initialized()) {
         basic_ptree<K, D, C> whitelistArr = whitelistNode.get();
