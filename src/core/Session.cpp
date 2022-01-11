@@ -17,8 +17,7 @@
 #include <vector>
 
 Session::Session(io_context &context)
-    : stage(STAGE::CONNECTING), id(id), clientSock(context), proxySock(context), readTunnelCounter(),
-      writeTunnelCounter() {
+    : stage(STAGE::CONNECTING), clientSock(context), proxySock(context), readTunnelCounter(), writeTunnelCounter() {
     readProxyBuffer = st::mem::pmalloc(bufferSize).first;
     readClientBuffer = st::mem::pmalloc(bufferSize).first;
     writeProxyBuffer = st::mem::pmalloc(bufferSize).first;
@@ -44,6 +43,12 @@ void Session::start() {
     auto realDistPort = st::dns::SHM::read().getRealPort(distEnd.address().to_v4().to_uint(), distEnd.port());
     this->distEnd = tcp::endpoint(make_address_v4(this->distEnd.address().to_v4().to_string()), realDistPort.second);
     this->preferArea = realDistPort.first;
+    this->distArea = areaip::getArea(this->distEnd.address().to_v4().to_uint());
+    if (this->distArea.compare("default") == 0) {
+        Logger::WARN << "ip" << st::utils::ipv4::ipToStr(this->distEnd.address().to_v4().to_uint())
+                     << "area not recognized" << END;
+    }
+
     selectTunnels();
     if (targetTunnels.empty()) {
         Logger::ERROR << idStr() << "cal tunnels empty!" << END;
@@ -420,8 +425,6 @@ string Session::transmitLog() const {
     return "live:" + to_string(val) + ", read:" + to_string(this->readTunnelCounter.total().second) +
            ", write:" + to_string(this->writeTunnelCounter.total().second);
 }
-std::pair<uint64_t, uint64_t> Session::transmit() const {}
-
 bool Session::nextStage(Session::STAGE nextStage) {
     stageLock.lock();
     bool result = false;
@@ -459,6 +462,7 @@ unordered_map<string, string> Session::dimensions(unordered_map<string, string> 
             {"tunnelIndex", connectedTunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
             {"clientIP", clientEnd.address().to_string()},
             {"distHost", distHost},
+            {"distArea", distArea},
             {"distIP", distEnd.address().to_string()},
             {"distEndPort", to_string(distEnd.port())}};
     result.insert(dimensions.begin(), dimensions.end());

@@ -32,7 +32,6 @@ public:
 
     string transmitLog() const;
 
-    std::pair<uint64_t, uint64_t> transmit() const;
 
     void shutdown();
 
@@ -57,6 +56,7 @@ private:
     uint64_t tryConnectIndex = 0;
     uint64_t begin = 0;
     string preferArea = "";
+    string distArea = "";
 
 
     void readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler);

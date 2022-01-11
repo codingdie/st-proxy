@@ -133,5 +133,17 @@ namespace st {
             }
             return "";
         }
+        string getArea(const uint32_t &ip) {
+            if (ip == 0) {
+                return "default";
+            }
+            for (auto it = caches.begin(); it != caches.end(); it++) {
+                string area = (*it).first;
+                if (isAreaIP(area, ip)) {
+                    return area;
+                }
+            }
+            return "default";
+        }
     }// namespace areaip
 }// namespace st

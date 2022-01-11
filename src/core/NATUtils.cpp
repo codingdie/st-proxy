@@ -14,7 +14,8 @@
 
 #ifdef __APPLE__
 
-tcp::endpoint NATUtils::getDstAddrForMac(__uint32_t clientIp, __uint16_t clientPort, __uint32_t serverIp, __uint16_t serverPort) {
+tcp::endpoint NATUtils::getDstAddrForMac(__uint32_t clientIp, __uint16_t clientPort, __uint32_t serverIp,
+                                         __uint16_t serverPort) {
     uint32_t ip = 0;
     uint16_t port = 0;
     struct pfioc_natlook pnl;
@@ -51,7 +52,8 @@ tcp::endpoint NATUtils::getProxyAddr(boost::asio::ip::tcp::socket &socket) {
     if (!ec) {
         auto serverEnd = socket.local_endpoint(ec);
         if (!ec) {
-            return move(getDstAddrForMac(clientEnd.address().to_v4().to_uint(), clientEnd.port(), serverEnd.address().to_v4().to_uint(), serverEnd.port()));
+            return move(getDstAddrForMac(clientEnd.address().to_v4().to_uint(), clientEnd.port(),
+                                         serverEnd.address().to_v4().to_uint(), serverEnd.port()));
         } else {
             Logger::ERROR << __PRETTY_FUNCTION__ << "get server addr failed!" << ec.message() << END;
         }
@@ -89,9 +91,11 @@ bool NATUtils::addToWhitelist(uint32_t ip) { return addToIPSet("st-proxy-whiteli
 bool NATUtils::addTestDomain(string domain) { return addToIPSet("st-proxy-test", domain); }
 
 bool NATUtils::addToIPSet(string name, string domain) {
+    bool result = true;
     for (auto ip : st::utils::dns::query(domain)) {
-        addToIPSet(name, ip);
+        result &= addToIPSet(name, ip);
     }
+    return result;
 }
 bool NATUtils::addToIPSet(string name, uint32_t ip) {
     string result;

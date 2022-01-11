@@ -14,7 +14,7 @@ void Config::load(const string &configPathInput) {
         ptree tree;
         try {
             read_json(configPath, tree);
-        } catch (json_parser_error e) {
+        } catch (json_parser_error& e) {
             Logger::ERROR << " parse config file " + configPath + " error!" << e.message() << END;
             exit(1);
         }
