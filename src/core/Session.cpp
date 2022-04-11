@@ -43,7 +43,7 @@ void Session::start() {
     auto realDistPort = st::dns::SHM::read().getRealPort(distEnd.address().to_v4().to_uint(), distEnd.port());
     this->distEnd = tcp::endpoint(make_address_v4(this->distEnd.address().to_v4().to_string()), realDistPort.second);
     this->preferArea = realDistPort.first;
-    this->distArea = areaip::getArea(this->distEnd.address().to_v4().to_uint());
+    this->distArea = st::areaip::Manager::uniq().getArea(this->distEnd.address().to_v4().to_uint());
     if (this->distArea.compare("default") == 0) {
         Logger::WARN << "ip" << st::utils::ipv4::ipToStr(this->distEnd.address().to_v4().to_uint())
                      << "area not recognized" << END;
@@ -103,7 +103,7 @@ void Session::selectTunnels() {
         StreamTunnel *tunnel = *it.base();
 
         int score = 1;
-        bool inArea = st::areaip::isAreaIP(tunnel->proxyAreas, distIP);
+        bool inArea = st::areaip::Manager::uniq().isAreaIP(tunnel->proxyAreas, distIP);
         if (inArea) {
             score += 1000;
         }

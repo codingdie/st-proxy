@@ -103,7 +103,7 @@ StreamTunnel *Config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
         streamTunnel->proxyAreas.insert(streamTunnel->proxyAreas.begin(), streamTunnel->area);
     }
     for (auto &area : streamTunnel->proxyAreas) {
-        if (!st::areaip::loadAreaIPs(area)) {
+        if (!st::areaip::Manager::uniq().loadAreaIPs(area)) {
             exit(1);
         }
     }
