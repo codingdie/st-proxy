@@ -14,13 +14,14 @@ SHM::SHM(bool readOnly) : readOnly(readOnly), initSHMSuccess(false) {
     try {
         if (!readOnly) {
             boost::interprocess::shared_memory_object::remove(NAME.c_str());
-            segment = new boost::interprocess::managed_shared_memory(boost::interprocess::create_only, NAME.c_str(),
+            segment = new boost::interprocess::managed_shared_memory(boost::interprocess::open_or_create, NAME.c_str(),
                                                                      1024 * 1024 * 4);
             alloc_inst = new void_allocator(segment->get_segment_manager());
             dnsMap = segment->construct<shm_map>(REVERSE_NAME.c_str())(std::less<shm_map_key_type>(), *alloc_inst);
+            dnsMap->clear();
             initSHMSuccess = true;
         } else {
-            relocate();
+            relocateReadSHM();
         }
     } catch (const std::exception &e) {
         Logger::ERROR << "init SHM error!" << e.what() << END;
@@ -42,9 +43,9 @@ SHM::~SHM() {
 }
 
 
-void SHM::relocate() {
+void SHM::relocateReadSHM() {
     try {
-        auto segmentNew = new boost::interprocess::managed_shared_memory(boost::interprocess::open_only, NAME.c_str());
+        auto segmentNew = new boost::interprocess::managed_shared_memory(boost::interprocess::open_read_only, NAME.c_str());
         auto dnsMapNew = segmentNew->find<shm_map>(REVERSE_NAME.c_str()).first;
         auto allocInstNew = new void_allocator(segmentNew->get_segment_manager());
         initSHMSuccess = false;

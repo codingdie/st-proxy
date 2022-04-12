@@ -252,10 +252,10 @@ namespace st {
                 try {
                     std::stringstream ss(result);
                     read_json(ss, tree);
-                    auto asn = tree.get_child("asn");
-                    if (!asn.empty()) {
+                    auto asn = tree.get_child_optional("asn");
+                    if (asn.is_initialized()) {
                         auto country = tree.get("country", "");
-                        auto route = asn.get("route", "");
+                        auto route = asn.get().get("route", "");
                         if (!route.empty() && !country.empty() && country.size() == 2) {
                             results.emplace_back(AreaIP::parse(route, country));
                         }
@@ -263,7 +263,7 @@ namespace st {
                 } catch (json_parser_error &e) {
                 }
             } else {
-                Logger::ERROR << "loadIPInfo curl failed!" << command << END;
+                Logger::ERROR << "loadIPInfo curl failed!" << command << result << END;
             }
             if (results.empty()) {
                 Logger::ERROR << "loadIPInfo failed!" << result << END;
