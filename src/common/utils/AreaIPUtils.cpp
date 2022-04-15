@@ -209,8 +209,7 @@ namespace st {
             auto iterator = caches.find(areaCode);
             if (iterator != caches.end()) {
                 for (auto it = iterator->second.begin(); it != iterator->second.end(); it++) {
-                    auto areaIP = *it;
-                    if (ip <= areaIP.end && ip >= areaIP.start) {
+                    if (ip <= it->end && ip >= it->start) {
                         return true;
                     }
                 }
@@ -252,15 +251,25 @@ namespace st {
                 try {
                     std::stringstream ss(result);
                     read_json(ss, tree);
-                    auto asn = tree.get_child_optional("asn");
-                    if (asn.is_initialized()) {
-                        auto country = tree.get("country", "");
-                        auto route = asn.get().get("route", "");
-                        if (!route.empty() && !country.empty() && country.size() == 2) {
-                            results.emplace_back(AreaIP::parse(route, country));
+                    auto country = tree.get("country", "");
+                    if (!country.empty() && country.size() == 2) {
+                        auto asn = tree.get_child_optional("asn");
+                        if (asn.is_initialized()) {
+                            auto route = asn.get().get("route", "");
+                            if (!route.empty()) {
+                                results.emplace_back(AreaIP::parse(route, country));
+                            }
+                        } else {
+                            auto abuse = tree.get_child_optional("abuse");
+                            if (abuse.is_initialized()) {
+                                auto route = abuse.get().get("network", "");
+                                if (!route.empty()) {
+                                    results.emplace_back(AreaIP::parse(route, country));
+                                }
+                            }
                         }
                     }
-                } catch (json_parser_error &e) {
+                } catch (exception &e) {
                 }
             } else {
                 Logger::ERROR << "loadIPInfo curl failed!" << command << result << END;
