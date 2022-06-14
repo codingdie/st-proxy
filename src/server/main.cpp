@@ -1,16 +1,16 @@
 //
 // Created by codingdie on 2020/6/27.
 //
-#include "ProxyServer.h"
-#include "utils/STUtils.h"
+#include "proxy_server.h"
+#include "utils/utils.h"
 #include <stdlib.h>
 
 static const vector<string> availablePaths({"../confs", "/usr/local/etc/st/proxy", "/etc/st/proxy"});
 static const string pidFile = "/var/run/st-proxy.pid";
 
 void startServer(const string &confPath) {
-    st::proxy::Config::INSTANCE.load(confPath);
-    ProxyServer server;
+    st::proxy::config::INSTANCE.load(confPath);
+    proxy_server server;
     server.start();
 }
 
@@ -34,10 +34,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (confPath.empty()) {
-        Logger::ERROR << "the config folder not exits!" << END;
+        logger::ERROR << "the config folder not exits!" << END;
         return 0;
     }
-    Logger::INFO << "the config folder is" << confPath << END;
+    logger::INFO << "the config folder is" << confPath << END;
 
     bool directStartServer = false;
     if (argc == 1) {
@@ -62,11 +62,11 @@ int main(int argc, char *argv[]) {
                 serviceScript(confPath, "stop");
                 serviceScript(confPath, "start");
             } else {
-                Logger::ERROR << "not support command" << END;
+                logger::ERROR << "not support command" << END;
             }
             return 0;
         }
     }
-    Logger::ERROR << "not valid command" << END;
+    logger::ERROR << "not valid command" << END;
     return 0;
 }

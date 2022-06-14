@@ -15,6 +15,7 @@ st-proxy is a smart local transport proxy which support to config multi socks5/d
 1. add openwrt feeds https://github.com/codingdie/openwrt-packages 
 2. choose luci-app-st-proxy and install
 3. the app like this![image](docs/st-proxy-openwrt.jpg)
+ß
 
 ### How to run?  
 #### 1. Run Direct  
