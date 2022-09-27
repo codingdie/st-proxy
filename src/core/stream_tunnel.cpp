@@ -7,7 +7,7 @@
 stream_tunnel::stream_tunnel(const string &type, const string &ip, int port) : type(type), ip(ip), port(port) {}
 
 
-string stream_tunnel::toString() {
+string stream_tunnel::id() {
     if (type.compare("DIRECT") == 0) {
         return "DIRECT";
     } else {

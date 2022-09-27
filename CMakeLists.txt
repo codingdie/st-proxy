@@ -2,19 +2,12 @@ cmake_minimum_required(VERSION 3.11)
 project(st-proxy)
 
 set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -Wall -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -latomic -Wall -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Os")
 
 find_package(OpenSSL 1.0.2 REQUIRED)
 find_package(Boost 1.66.0 REQUIRED COMPONENTS system filesystem thread)
-
-include_directories(${Boost_INCLUDE_DIR})
-include_directories(${OPENSSL_INCLUDE_DIR})
-message("${OPENSSL_INCLUDE_DIR}")
-message("${OPENSSL_LIBRARIES}")
-message("${Boost_INCLUDE_DIR}")
-message("${Boost_LIBRARIES}")
-
+find_package(leveldb REQUIRED)
 include_directories(src/core)
 include_directories(src/common)
 include_directories(src/test)
@@ -29,7 +22,7 @@ file(GLOB_RECURSE SOURCE_UNIT_TEST_FILES src/test/unit/*.cpp)
 message("${SOURCE_FILES}")
 message("${SOURCE_COMMON_FILES}")
 add_executable(st-proxy src/server/main.cpp ${SOURCE_FILES} ${SOURCE_COMMON_FILES})
-set(OTHER_LIBRARIES "rt")
+set(OTHER_LIBRARIES "rt" "leveldb::leveldb")
 target_link_libraries(st-proxy ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES})
 
 
@@ -45,11 +38,11 @@ elseif (CMAKE_HOST_UNIX)
     install(DIRECTORY confs/linux/ DESTINATION etc/st/proxy)
 endif ()
 
-if(NOT OPENWRT)
+if (NOT OPENWRT)
     include(FetchContent)
     FetchContent_Declare(
-        googletest
-        URL https://github.com/google/googletest/archive/609281088cfefc76f9d0ce82e1ff6c30cc3591e5.zip
+            googletest
+            URL https://github.com/google/googletest/archive/609281088cfefc76f9d0ce82e1ff6c30cc3591e5.zip
     )
     # For Windows: Prevent overriding the parent project's compiler/linker settings
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -62,4 +55,4 @@ if(NOT OPENWRT)
     include(GoogleTest)
     gtest_discover_tests(st-proxy-unit-test)
     gtest_discover_tests(st-proxy-integration-test)
-endif()
+endif ()

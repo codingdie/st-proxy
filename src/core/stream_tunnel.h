@@ -20,7 +20,7 @@ public:
     set<string> whitelist;
     set<uint32_t> whitelistIPs;
 
-    string toString();
+    string id();
 
     stream_tunnel(const string &type, const string &ip, int port);
 

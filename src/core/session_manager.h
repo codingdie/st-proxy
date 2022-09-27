@@ -33,7 +33,6 @@ public:
 private:
     unordered_map<uint64_t, proxy_session *> connections;
     unordered_map<string, pair<pair<uint64_t, uint64_t>, pair<uint64_t, uint64_t>>> speeds;
-    std::atomic<uint64_t> id;
     default_random_engine random_engine;
     uniform_int_distribution<unsigned short> random_range;//随机数分布对象
 

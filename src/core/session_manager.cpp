@@ -8,7 +8,6 @@
 static mutex monitorLock;
 static mutex statsLock;
 proxy_session *session_manager::add(proxy_session *session) {
-    session->id = ++id;
     auto theId = session->id;
     logger::traceId = theId;
     session->start();
@@ -20,7 +19,7 @@ proxy_session *session_manager::add(proxy_session *session) {
 }
 
 session_manager::session_manager(io_context *ic)
-    : id(0), random_engine(time::now()), random_range(1024, 12000), stats_timer(*ic), session_timer(*ic) {
+    : random_engine(time::now()), random_range(1024, 12000), stats_timer(*ic), session_timer(*ic) {
     schedule_stats();
     schedule_monitor();
 }
@@ -59,9 +58,7 @@ uint16_t session_manager::guess_unused_port() { return random_range(random_engin
 void session_manager::schedule_stats() {
     stats_timer.expires_from_now(boost::posix_time::seconds(30));
     stats_timer.async_wait([&](boost::system::error_code ec) {
-        if (id > 0) {
-            this->stats();
-        }
+        this->stats();
         this->schedule_stats();
     });
 }
@@ -69,9 +66,7 @@ void session_manager::schedule_stats() {
 void session_manager::schedule_monitor() {
     session_timer.expires_from_now(boost::posix_time::seconds(5));
     session_timer.async_wait([&](boost::system::error_code ec) {
-        if (id > 0) {
-            this->monitor_session();
-        }
+        this->monitor_session();
         this->schedule_monitor();
     });
 }
@@ -91,7 +86,7 @@ void session_manager::monitor_session() {
             auto sid = connection.first;
             logger::traceId = session->id;
             if (session->connected_tunnel != nullptr) {
-                auto tunnelId = session->connected_tunnel->toString();
+                auto tunnelId = session->connected_tunnel->id();
                 if (speeds.find(tunnelId) == speeds.end()) {
                     speeds[tunnelId] = {{0, 0}, {0, 0}};
                 }

@@ -29,19 +29,3 @@ TEST(unit_tests, testIPStr) {
     ASSERT_TRUE(st::utils::ipv4::str_to_ip(".1.1.1.1") == 0);
     ASSERT_TRUE(st::utils::ipv4::str_to_ip("baidu.com") == 0);
 }
-
-
-TEST(unit_tests, median_counter) {
-    st::utils::counters::median<double> ct;
-    ct += 5;
-    ct += 3;
-    ct += 2;
-    ASSERT_EQ(3, ct.mid());
-    ct += 2;
-    ASSERT_EQ(2.5, ct.mid());
-    ct += 9;
-    ASSERT_EQ(3, ct.mid());
-    ct += 9;
-    ct += 9;
-    ASSERT_EQ(5, ct.mid());
-}

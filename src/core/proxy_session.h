@@ -53,39 +53,38 @@ private:
     uint64_t begin = 0;
     string preferArea;
     string distArea;
-    tcp::endpoint distEnd;
+    tcp::endpoint dist_end;
     tcp::endpoint clientEnd;
     string distHost;
     std::atomic<STAGE> stage;
     tcp::socket proxy_sock;
-
-    void readClientMax(const string &tag, size_t maxSize, std::function<void(size_t size)> completeHandler);
+    void readClientMax(const string &tag, size_t maxSize, const std::function<void(size_t size)> &completeHandler);
 
     void readClient();
 
     void writeClient(size_t size);
 
-    void writeClient(const string &tag, size_t size, std::function<void()> completeHandler);
+    void writeClient(const string &tag, size_t size, const std::function<void()> &completeHandler);
 
     void readProxy();
 
-    void readProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler);
+    void readProxy(size_t size, const std::function<void(boost::system::error_code error)> &completeHandler);
 
     void writeProxy(size_t size);
 
-    void writeProxy(const string &tag, size_t size, std::function<void()> completeHandler);
+    void writeProxy(const string &tag, size_t size, const std::function<void()> &completeHandler);
 
-    void writeProxy(size_t size, std::function<void(boost::system::error_code error)> completeHandler);
+    void writeProxy(size_t size, const std::function<void(boost::system::error_code error)> &completeHandler);
 
-    void connect_tunnels(std::function<void(bool)> completeHandler);
+    void connect_tunnels(const std::function<void(bool)>&complete_handler);
 
-    void directConnect(stream_tunnel *tunnel, std::function<void(bool)> completeHandler);
+    void directConnect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler);
 
-    void proxyConnect(stream_tunnel *tunnel, std::function<void(bool)> completeHandler);
+    void proxyConnect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler);
 
-    void selectTunnels();
+    void select_tunnels();
 
-    void close(tcp::socket &socks, std::function<void()> completeHandler);
+    static void close(tcp::socket &socks, const std::function<void()> &completeHandler);
 
     void bindLocalPort(basic_endpoint<tcp> &endpoint, boost::system::error_code &error);
 

@@ -4,6 +4,7 @@
 
 #include "proxy_server.h"
 #include "nat_utils.h"
+#include "quality_analyzer.h"
 #include "session_manager.h"
 #include "utils/utils.h"
 #include <boost/process.hpp>
@@ -80,9 +81,9 @@ void proxy_server::start() {
         });
     }
     io_context *schedule_ic = worker_ctxs.at(worker_num - 1);
-    manager = new session_manager(schedule_ic);
     threads.emplace_back([=]() { schedule_ic->run(); });
-
+    manager = new session_manager(schedule_ic);
+    quality_analyzer::uniq().set_io_context(schedule_ic);
     logger::INFO << "st-proxy server started, listen at"
                  << st::proxy::config::INSTANCE.ip + ":" + to_string(st::proxy::config::INSTANCE.port) << END;
     this->state = 1;
@@ -91,6 +92,7 @@ void proxy_server::start() {
         th.join();
     }
     delete manager;
+    quality_analyzer::uniq().set_io_context(nullptr);
     logger::INFO << "st-proxy server stopped" << END;
 }
 void proxy_server::shutdown() {
