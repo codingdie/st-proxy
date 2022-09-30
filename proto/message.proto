@@ -1,0 +1,16 @@
+syntax = "proto3";
+package st.proxy.proto;
+option optimize_for = LITE_RUNTIME;
+message session_record {
+  bool success = 1;
+  uint32 first_package_cost = 2;
+  uint64 timestamp = 3;
+}
+message quality_record {
+  repeated session_record  records = 1;
+  uint32 queue_size = 2;
+  uint32 first_package_cost = 3;
+  uint32 first_package_success = 4;
+  uint32 first_package_failed = 5;
+}
+

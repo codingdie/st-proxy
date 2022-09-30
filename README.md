@@ -5,6 +5,7 @@ st-proxy is a smart local transport proxy which support to config multi socks5/d
 - [CMake](https://cmake.org/) >= 3.7.2
 - [Boost](http://www.boost.org/) >= 1.66.0 (system,filesystem,thread)
 - [OpenSSL](https://www.openssl.org/) >= 1.1.0
+- [ProtoBuf](https://www.openssl.org/) = 3.7.1 
 
 ### How to install?  
 #### for all platform  

@@ -68,10 +68,10 @@ void session_manager::monitor_session() {
                 closed_session_ids.emplace(sid);
             } else if (session->is_connect_timeout()) {
                 session->shutdown();
-                logger::ERROR << "session manager shutdown connect timeout session" << session->idStr() << END;
+                logger::WARN << "session manager shutdown connect timeout session" << session->idStr() << END;
             } else if (!session->is_transmitting()) {
                 session->shutdown();
-                logger::ERROR << "session manager shutdown noRead noWrite session" << session->idStr() << END;
+                logger::WARN << "session manager shutdown noRead noWrite session" << session->idStr() << END;
             }
         }
     }
@@ -80,7 +80,7 @@ void session_manager::monitor_session() {
             logger::ERROR << "session manager destroy session failed!" << session_id << END;
         }
     }
-    logger::ERROR << "session manager destroy" << closed_session_ids.size()
-                  << "session, origin session size:" << session_size << "final session size:" << connections.size()
+    logger::INFO << "session manager destroy" << closed_session_ids.size()
+                 << "session, origin session size:" << session_size << "final session size:" << connections.size()
                   << END;
 }

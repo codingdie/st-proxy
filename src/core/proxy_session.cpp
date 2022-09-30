@@ -103,7 +103,7 @@ void proxy_session::try_connect() {
 }
 
 void proxy_session::select_tunnels() {
-    vector<pair<stream_tunnel *, int>> tunnels;
+    vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> tunnels;
     uint32_t dist_ip = dist_end.address().to_v4().to_uint();
     for (auto it = st::proxy::config::INSTANCE.tunnels.begin(); it != st::proxy::config::INSTANCE.tunnels.end(); it++) {
         stream_tunnel *tunnel = *it.base();
@@ -118,15 +118,31 @@ void proxy_session::select_tunnels() {
         if (tunnel->area == preferArea) {
             score += 1000;
         }
-        const quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-        if (!record.valid()) {
-            score = -10000;
+        const proxy::proto::quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
+        if (!quality_analyzer::is_valid(record)) {
+            score -= -10000;
         }
-        tunnels.emplace_back(tunnel, score);
+        tunnels.emplace_back(tunnel, make_pair(score, record));
     }
     std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
     sort(tunnels.begin(), tunnels.end(),
-         [=](const pair<stream_tunnel *, int> &a, const pair<stream_tunnel *, int> &b) { return a.second > b.second; });
+         [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,
+             const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &b) {
+             if (a.second.first == b.second.first) {
+                 const proxy::proto::quality_record &record_a = a.second.second;
+                 const proxy::proto::quality_record &record_b = b.second.second;
+                 if (quality_analyzer::is_enough(record_a) && quality_analyzer::is_enough(record_b)) {
+                     if (record_a.first_package_success() != record_b.first_package_success()) {
+                         return record_a.first_package_success() > record_b.first_package_success();
+                     } else {
+                         if (record_a.first_package_cost() != record_b.first_package_cost()) {
+                             return record_a.first_package_cost() < record_b.first_package_cost();
+                         }
+                     }
+                 }
+             }
+             return a.second.first > b.second.first;
+         });
     logger::DEBUG << idStr() << "select_tunnels";
     if (!preferArea.empty()) {
         logger::DEBUG << "prefer" << preferArea;
@@ -135,7 +151,10 @@ void proxy_session::select_tunnels() {
     for (auto &it : tunnels) {
         stream_tunnel *tunnel = it.first;
         targetTunnels.emplace_back(tunnel);
-        logger::DEBUG << "[" + to_string(++i) + "]" + tunnel->id() + "[" + to_string(it.second) + "]";
+        logger::DEBUG << "[" + to_string(++i) + "]" + tunnel->id() + "[" + to_string(it.second.first) + "/" +
+                                 to_string(it.second.second.first_package_success()) + "/" +
+                                 to_string(it.second.second.first_package_failed()) + "/" +
+                                 to_string(it.second.second.first_package_cost()) + "]";
     }
     logger::DEBUG << END;
 }
@@ -330,7 +349,7 @@ void proxy_session::readProxy() {
 void proxy_session::readProxy(size_t size,
                               const std::function<void(boost::system::error_code error)> &completeHandler) {
     if (proxy_sock.is_open()) {
-        proxy_sock.async_receive(buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize),
+        proxy_sock.async_receive(buffer(readProxyBuffer, sizeof(uint8_t) * size),
                                  [=](boost::system::error_code error, size_t size) { completeHandler(error); });
     }
 }
