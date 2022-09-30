@@ -48,8 +48,10 @@ void proxy_session::start() {
         logger::WARN << "ip" << st::utils::ipv4::ip_to_str(this->dist_end.address().to_v4().to_uint())
                      << "area not recognized" << END;
     }
-
+    uint64_t begin = time::now();
     select_tunnels();
+    apm_logger::perf("st-proxy-select-tunnels", {}, time::now() - begin);
+
     if (targetTunnels.empty()) {
         logger::ERROR << idStr() << "cal tunnels empty!" << END;
         shutdown();
@@ -81,10 +83,13 @@ void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_ha
     }
 }
 void proxy_session::try_connect() {
+    uint64_t real_begin = time::now();
     connect_tunnels([=](bool success) {
         logger::traceId = id;
-        uint64_t connectCost = time::now() - begin;
-        logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << connectCost << END;
+        uint64_t connect_cost = time::now() - begin;
+        uint64_t try_connect_cost = time::now() - real_begin;
+        logger::INFO << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << connect_cost
+                     << try_connect_cost << END;
         if (success) {
             this->nextStage(STAGE::CONNECTED);
             readClient();
@@ -92,7 +97,8 @@ void proxy_session::try_connect() {
         } else {
             shutdown();
         }
-        apm_logger::perf("st-proxy-connect", dimensions({{"success", to_string(success)}}), connectCost);
+        apm_logger::perf("st-proxy-connect", dimensions({{"success", to_string(success)}}), connect_cost);
+        apm_logger::perf("st-proxy-try-connect", dimensions({{"success", to_string(success)}}), try_connect_cost);
     });
 }
 

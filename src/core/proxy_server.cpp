@@ -66,7 +66,7 @@ void proxy_server::start() {
         return;
     }
     vector<thread> threads;
-    auto worker_num = std::max(1U, std::thread::hardware_concurrency()) + 1;
+    auto worker_num = std::max(1U, std::thread::hardware_concurrency() * 2) + 1;
     for (auto i = 0; i < worker_num; i++) {
         auto ic = new boost::asio::io_context();
         auto iw = new boost::asio::io_context::work(*ic);
@@ -84,7 +84,7 @@ void proxy_server::start() {
     threads.emplace_back([=]() { schedule_ic->run(); });
     manager = new session_manager(schedule_ic);
     quality_analyzer::uniq().set_io_context(schedule_ic);
-    logger::INFO << "st-proxy server started, listen at"
+    logger::INFO << "st-proxy server started with" << worker_num << "worker, listen at"
                  << st::proxy::config::INSTANCE.ip + ":" + to_string(st::proxy::config::INSTANCE.port) << END;
     this->state = 1;
     boss_ctx.run();
