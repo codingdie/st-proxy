@@ -59,24 +59,25 @@ static void InitDefaultsquality_record_message_2eproto() {
 
 namespace st {
 namespace proxy {
-    namespace proto {
-        bool record_type_IsValid(int value) {
-            switch (value) {
-                case 0:
-                case 1:
-                    return true;
-                default:
-                    return false;
-            }
-        }
+namespace proto {
+bool record_type_IsValid(int value) {
+  switch (value) {
+    case 0:
+    case 1:
+      return true;
+    default:
+      return false;
+  }
+}
 
 
-        // ===================================================================
+// ===================================================================
 
-        void session_record::InitAsDefaultInstance() {}
-        class session_record::HasBitSetters {
-        public:
-        };
+void session_record::InitAsDefaultInstance() {
+}
+class session_record::HasBitSetters {
+ public:
+};
 
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int session_record::kSuccessFieldNumber;
@@ -398,18 +399,19 @@ quality_record::quality_record(const quality_record& from)
   : ::google::protobuf::MessageLite(),
       _internal_metadata_(nullptr),
       records_(from.records_) {
-    _internal_metadata_.MergeFrom(from._internal_metadata_);
-    ::memcpy(&queue_size_, &from.queue_size_,
-             static_cast<size_t>(reinterpret_cast<char *>(&type_) - reinterpret_cast<char *>(&queue_size_)) +
-                     sizeof(type_));
-    // @@protoc_insertion_point(copy_constructor:st.proxy.proto.quality_record)
+  _internal_metadata_.MergeFrom(from._internal_metadata_);
+  ::memcpy(&queue_size_, &from.queue_size_,
+    static_cast<size_t>(reinterpret_cast<char*>(&type_) -
+    reinterpret_cast<char*>(&queue_size_)) + sizeof(type_));
+  // @@protoc_insertion_point(copy_constructor:st.proxy.proto.quality_record)
 }
 
 void quality_record::SharedCtor() {
-    ::google::protobuf::internal::InitSCC(&scc_info_quality_record_message_2eproto.base);
-    ::memset(&queue_size_, 0,
-             static_cast<size_t>(reinterpret_cast<char *>(&type_) - reinterpret_cast<char *>(&queue_size_)) +
-                     sizeof(type_));
+  ::google::protobuf::internal::InitSCC(
+      &scc_info_quality_record_message_2eproto.base);
+  ::memset(&queue_size_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&type_) -
+      reinterpret_cast<char*>(&queue_size_)) + sizeof(type_));
 }
 
 quality_record::~quality_record() {
@@ -436,97 +438,95 @@ void quality_record::Clear() {
   (void) cached_has_bits;
 
   records_.Clear();
-  ::memset(&queue_size_, 0,
-           static_cast<size_t>(reinterpret_cast<char *>(&type_) - reinterpret_cast<char *>(&queue_size_)) +
-                   sizeof(type_));
+  ::memset(&queue_size_, 0, static_cast<size_t>(
+      reinterpret_cast<char*>(&type_) -
+      reinterpret_cast<char*>(&queue_size_)) + sizeof(type_));
   _internal_metadata_.Clear();
 }
 
 #if GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
-const char *quality_record::_InternalParse(const char *begin, const char *end, void *object,
-                                           ::google::protobuf::internal::ParseContext *ctx) {
-    auto msg = static_cast<quality_record *>(object);
-    ::google::protobuf::int32 size;
-    (void) size;
-    int depth;
-    (void) depth;
-    ::google::protobuf::uint32 tag;
-    ::google::protobuf::internal::ParseFunc parser_till_end;
-    (void) parser_till_end;
-    auto ptr = begin;
-    while (ptr < end) {
-        ptr = ::google::protobuf::io::Parse32(ptr, &tag);
+const char* quality_record::_InternalParse(const char* begin, const char* end, void* object,
+                  ::google::protobuf::internal::ParseContext* ctx) {
+  auto msg = static_cast<quality_record*>(object);
+  ::google::protobuf::int32 size; (void)size;
+  int depth; (void)depth;
+  ::google::protobuf::uint32 tag;
+  ::google::protobuf::internal::ParseFunc parser_till_end; (void)parser_till_end;
+  auto ptr = begin;
+  while (ptr < end) {
+    ptr = ::google::protobuf::io::Parse32(ptr, &tag);
+    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+    switch (tag >> 3) {
+      // repeated .st.proxy.proto.session_record records = 1;
+      case 1: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 10) goto handle_unusual;
+        do {
+          ptr = ::google::protobuf::io::ReadSize(ptr, &size);
+          GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+          parser_till_end = ::st::proxy::proto::session_record::_InternalParse;
+          object = msg->add_records();
+          if (size > end - ptr) goto len_delim_till_end;
+          ptr += size;
+          GOOGLE_PROTOBUF_PARSER_ASSERT(ctx->ParseExactRange(
+              {parser_till_end, object}, ptr - size, ptr));
+          if (ptr >= end) break;
+        } while ((::google::protobuf::io::UnalignedLoad<::google::protobuf::uint64>(ptr) & 255) == 10 && (ptr += 1));
+        break;
+      }
+      // uint32 queue_size = 2;
+      case 2: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 16) goto handle_unusual;
+        msg->set_queue_size(::google::protobuf::internal::ReadVarint(&ptr));
         GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-        switch (tag >> 3) {
-            // repeated .st.proxy.proto.session_record records = 1;
-            case 1: {
-                if (static_cast<::google::protobuf::uint8>(tag) != 10) goto handle_unusual;
-                do {
-                    ptr = ::google::protobuf::io::ReadSize(ptr, &size);
-                    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-                    parser_till_end = ::st::proxy::proto::session_record::_InternalParse;
-                    object = msg->add_records();
-                    if (size > end - ptr) goto len_delim_till_end;
-                    ptr += size;
-                    GOOGLE_PROTOBUF_PARSER_ASSERT(ctx->ParseExactRange({parser_till_end, object}, ptr - size, ptr));
-                    if (ptr >= end) break;
-                } while ((::google::protobuf::io::UnalignedLoad<::google::protobuf::uint64>(ptr) & 255) == 10 &&
-                         (ptr += 1));
-                break;
-            }
-            // uint32 queue_size = 2;
-            case 2: {
-                if (static_cast<::google::protobuf::uint8>(tag) != 16) goto handle_unusual;
-                msg->set_queue_size(::google::protobuf::internal::ReadVarint(&ptr));
-                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-                break;
-            }
-            // uint32 first_package_cost = 3;
-            case 3: {
-                if (static_cast<::google::protobuf::uint8>(tag) != 24) goto handle_unusual;
-                msg->set_first_package_cost(::google::protobuf::internal::ReadVarint(&ptr));
-                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-                break;
-            }
-            // uint32 first_package_success = 4;
-            case 4: {
-                if (static_cast<::google::protobuf::uint8>(tag) != 32) goto handle_unusual;
-                msg->set_first_package_success(::google::protobuf::internal::ReadVarint(&ptr));
-                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-                break;
-            }
-            // uint32 first_package_failed = 5;
-            case 5: {
-                if (static_cast<::google::protobuf::uint8>(tag) != 40) goto handle_unusual;
-                msg->set_first_package_failed(::google::protobuf::internal::ReadVarint(&ptr));
-                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-                break;
-            }
-            // .st.proxy.proto.record_type type = 6;
-            case 6: {
-                if (static_cast<::google::protobuf::uint8>(tag) != 48) goto handle_unusual;
-                ::google::protobuf::uint64 val = ::google::protobuf::internal::ReadVarint(&ptr);
-                msg->set_type(static_cast<::st::proxy::proto::record_type>(val));
-                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-                break;
-            }
-            default: {
-            handle_unusual:
-                if ((tag & 7) == 4 || tag == 0) {
-                    ctx->EndGroup(tag);
-                    return ptr;
-                }
-                auto res = UnknownFieldParse(tag, {_InternalParse, msg}, ptr, end,
-                                             msg->_internal_metadata_.mutable_unknown_fields(), ctx);
-                ptr = res.first;
-                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
-                if (res.second) return ptr;
-            }
-        }// switch
-    }    // while
-    return ptr;
+        break;
+      }
+      // uint32 first_package_cost = 3;
+      case 3: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 24) goto handle_unusual;
+        msg->set_first_package_cost(::google::protobuf::internal::ReadVarint(&ptr));
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+        break;
+      }
+      // uint32 first_package_success = 4;
+      case 4: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 32) goto handle_unusual;
+        msg->set_first_package_success(::google::protobuf::internal::ReadVarint(&ptr));
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+        break;
+      }
+      // uint32 first_package_failed = 5;
+      case 5: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 40) goto handle_unusual;
+        msg->set_first_package_failed(::google::protobuf::internal::ReadVarint(&ptr));
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+        break;
+      }
+      // .st.proxy.proto.record_type type = 6;
+      case 6: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 48) goto handle_unusual;
+        ::google::protobuf::uint64 val = ::google::protobuf::internal::ReadVarint(&ptr);
+        msg->set_type(static_cast<::st::proxy::proto::record_type>(val));
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+        break;
+      }
+      default: {
+      handle_unusual:
+        if ((tag & 7) == 4 || tag == 0) {
+          ctx->EndGroup(tag);
+          return ptr;
+        }
+        auto res = UnknownFieldParse(tag, {_InternalParse, msg},
+          ptr, end, msg->_internal_metadata_.mutable_unknown_fields(), ctx);
+        ptr = res.first;
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
+        if (res.second) return ptr;
+      }
+    }  // switch
+  }  // while
+  return ptr;
 len_delim_till_end:
-    return ctx->StoreAndTailCall(ptr, end, {_InternalParse, msg}, {parser_till_end, object}, size);
+  return ctx->StoreAndTailCall(ptr, end, {_InternalParse, msg},
+                               {parser_till_end, object}, size);
 }
 #else  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 bool quality_record::MergePartialFromCodedStream(
@@ -599,35 +599,37 @@ bool quality_record::MergePartialFromCodedStream(
       case 5: {
         if (static_cast< ::google::protobuf::uint8>(tag) == (40 & 0xFF)) {
 
-              DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                      ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                      input, &first_package_failed_)));
-          } else {
-              goto handle_unusual;
-          }
-          break;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &first_package_failed_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
       }
 
       // .st.proxy.proto.record_type type = 6;
       case 6: {
-          if (static_cast<::google::protobuf::uint8>(tag) == (48 & 0xFF)) {
-              int value = 0;
-              DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                      int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(input, &value)));
-              set_type(static_cast<::st::proxy::proto::record_type>(value));
-          } else {
-              goto handle_unusual;
-          }
-          break;
+        if (static_cast< ::google::protobuf::uint8>(tag) == (48 & 0xFF)) {
+          int value = 0;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          set_type(static_cast< ::st::proxy::proto::record_type >(value));
+        } else {
+          goto handle_unusual;
+        }
+        break;
       }
 
       default: {
       handle_unusual:
-          if (tag == 0) {
-              goto success;
-          }
-          DO_(::google::protobuf::internal::WireFormatLite::SkipField(input, tag, &unknown_fields_stream));
-          break;
+        if (tag == 0) {
+          goto success;
+        }
+        DO_(::google::protobuf::internal::WireFormatLite::SkipField(
+            input, tag, &unknown_fields_stream));
+        break;
       }
     }
   }
@@ -668,17 +670,18 @@ void quality_record::SerializeWithCachedSizes(
 
   // uint32 first_package_success = 4;
   if (this->first_package_success() != 0) {
-      ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->first_package_success(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->first_package_success(), output);
   }
 
   // uint32 first_package_failed = 5;
   if (this->first_package_failed() != 0) {
-      ::google::protobuf::internal::WireFormatLite::WriteUInt32(5, this->first_package_failed(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(5, this->first_package_failed(), output);
   }
 
   // .st.proxy.proto.record_type type = 6;
   if (this->type() != 0) {
-      ::google::protobuf::internal::WireFormatLite::WriteEnum(6, this->type(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      6, this->type(), output);
   }
 
   output->WriteRaw(_internal_metadata_.unknown_fields().data(),
@@ -724,17 +727,21 @@ size_t quality_record::ByteSizeLong() const {
   // uint32 first_package_success = 4;
   if (this->first_package_success() != 0) {
     total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::UInt32Size(this->first_package_success());
+      ::google::protobuf::internal::WireFormatLite::UInt32Size(
+        this->first_package_success());
   }
 
   // uint32 first_package_failed = 5;
   if (this->first_package_failed() != 0) {
-      total_size += 1 + ::google::protobuf::internal::WireFormatLite::UInt32Size(this->first_package_failed());
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::UInt32Size(
+        this->first_package_failed());
   }
 
   // .st.proxy.proto.record_type type = 6;
   if (this->type() != 0) {
-      total_size += 1 + ::google::protobuf::internal::WireFormatLite::EnumSize(this->type());
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::EnumSize(this->type());
   }
 
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
@@ -759,16 +766,16 @@ void quality_record::MergeFrom(const quality_record& from) {
     set_queue_size(from.queue_size());
   }
   if (from.first_package_cost() != 0) {
-      set_first_package_cost(from.first_package_cost());
+    set_first_package_cost(from.first_package_cost());
   }
   if (from.first_package_success() != 0) {
-      set_first_package_success(from.first_package_success());
+    set_first_package_success(from.first_package_success());
   }
   if (from.first_package_failed() != 0) {
-      set_first_package_failed(from.first_package_failed());
+    set_first_package_failed(from.first_package_failed());
   }
   if (from.type() != 0) {
-      set_type(from.type());
+    set_type(from.type());
   }
 }
 
