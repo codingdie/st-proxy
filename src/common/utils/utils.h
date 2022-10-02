@@ -20,7 +20,7 @@
 #include "shm/dns_shm.h"
 #include "shm/kv.h"
 #include "shm/proxy_shm.h"
-#include "string.h"
+#include "string_utils.h"
 #include <random>
 #include <string>
 using namespace st::utils;

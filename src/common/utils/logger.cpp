@@ -4,7 +4,7 @@
 
 #include "logger.h"
 #include "base64.h"
-#include "string.h"
+#include "string_utils.h"
 #include <boost/lexical_cast.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <ctime>

@@ -40,7 +40,7 @@ namespace st {
             std::string ns;
             void check_mutex_status();
             std::string shm_name();
-            std::string mutex_Name();
+            std::string mutex_name();
 
         public:
             kv(std::string ns, uint32_t max_size);
@@ -54,6 +54,7 @@ namespace st {
             std::string get(const std::string &key);
 
             void put(const std::string &key, const std::string &value);
+            void erase(const std::string &key);
 
             void clear();
 

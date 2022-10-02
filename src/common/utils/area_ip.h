@@ -5,16 +5,16 @@
 #ifndef ST_AREAIP_UTILS_H
 #define ST_AREAIP_UTILS_H
 
+#include "ipv4.h"
+#include "logger.h"
 #include "shell.h"
+#include "string_utils.h"
 #include <iostream>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "string.h"
-#include "ipv4.h"
-#include "logger.h"
 
 using namespace std;
 

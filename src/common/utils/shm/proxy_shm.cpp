@@ -3,26 +3,22 @@
 //
 
 #include "proxy_shm.h"
-
+#include "utils/moment.h"
 namespace st {
     namespace proxy {
-        shm &shm::share() {
+        shm &shm::uniq() {
             static shm in;
             return in;
         }
-        void shm::update_quality(area_tunnel_quality quality) {
-            qualities->put(quality.key(), quality.avg_first_package_time);
-        }
-        area_tunnel_quality shm::get_quality(const std::string &src, const std::string &dist) {
-            area_tunnel_quality quality;
-            quality.src = src;
-            quality.dist = dist;
-            quality.avg_first_package_time = 0;
-            auto strValue = qualities->get(quality.key());
-            if (!strValue.empty()) {
-                quality.avg_first_package_time = std::stoul(strValue);
+        void shm::forbid_ip(uint32_t ip) { ip_blacklist->put(ip, std::to_string(utils::time::now())); }
+        void shm::recover_ip(uint32_t ip) { ip_blacklist->erase(std::to_string(ip)); }
+        bool shm::is_ip_forbid(uint32_t ip) {
+            auto str = ip_blacklist->get(std::to_string(ip));
+            if (str.empty()) {
+                return false;
             }
-            return quality;
+            uint64_t time = std::stoull(str);
+            return utils::time::now() - time < IP_FORBID_TIME;
         }
     }// namespace proxy
 }// namespace st

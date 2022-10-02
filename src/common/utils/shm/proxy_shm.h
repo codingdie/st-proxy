@@ -12,21 +12,16 @@
 namespace st {
     namespace proxy {
 
-        class area_tunnel_quality {
-        public:
-            std::string dist;
-            std::string src;
-            uint64_t avg_first_package_time;
-            std::string key() { return src + "_" + dist; }
-        };
         class shm {
         private:
-            st::shm::kv *qualities = st::shm::kv::create("PROXY-AREA-TUNNEL", 1 * 1024 * 1024);
+            st::shm::kv *ip_blacklist = st::shm::kv::create("ST-PROXY-IP-BLACKLIST", 1 * 1024 * 1024);
 
         public:
-            void update_quality(area_tunnel_quality quality);
-            area_tunnel_quality get_quality(const std::string &src, const std::string &dist);
-            static shm &share();
+            void forbid_ip(uint32_t ip);
+            void recover_ip(uint32_t ip);
+            bool is_ip_forbid(uint32_t ip);
+            static shm &uniq();
+            static const uint32_t IP_FORBID_TIME = 60L * 10L * 1000L;
         };
 
     }// namespace proxy

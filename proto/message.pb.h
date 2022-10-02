@@ -19,17 +19,18 @@
 #error regenerate this file with a newer version of protoc.
 #endif
 
-#include <google/protobuf/port_undef.inc>
-#include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/arena.h>
 #include <google/protobuf/arenastring.h>
+#include <google/protobuf/extension_set.h>// IWYU pragma: export
+#include <google/protobuf/generated_enum_util.h>
 #include <google/protobuf/generated_message_table_driven.h>
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/inlined_string_field.h>
-#include <google/protobuf/metadata_lite.h>
+#include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/message_lite.h>
-#include <google/protobuf/repeated_field.h>  // IWYU pragma: export
-#include <google/protobuf/extension_set.h>  // IWYU pragma: export
+#include <google/protobuf/metadata_lite.h>
+#include <google/protobuf/port_undef.inc>
+#include <google/protobuf/repeated_field.h>// IWYU pragma: export
 // @@protoc_insertion_point(includes)
 #include <google/protobuf/port_def.inc>
 #define PROTOBUF_INTERNAL_EXPORT_message_2eproto
@@ -66,19 +67,31 @@ template<> ::st::proxy::proto::session_record* Arena::CreateMaybeMessage<::st::p
 }  // namespace google
 namespace st {
 namespace proxy {
-namespace proto {
+    namespace proto {
 
-// ===================================================================
+        enum record_type {
+            IP_TUNNEL = 0,
+            IP = 1,
+            record_type_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::google::protobuf::int32>::min(),
+            record_type_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::google::protobuf::int32>::max()
+        };
+        bool record_type_IsValid(int value);
+        const record_type record_type_MIN = IP_TUNNEL;
+        const record_type record_type_MAX = IP;
+        const int record_type_ARRAYSIZE = record_type_MAX + 1;
 
-class session_record :
-    public ::google::protobuf::MessageLite /* @@protoc_insertion_point(class_definition:st.proxy.proto.session_record) */ {
- public:
-  session_record();
-  virtual ~session_record();
+        // ===================================================================
 
-  session_record(const session_record& from);
+        class session_record
+            : public ::google::protobuf::
+                      MessageLite /* @@protoc_insertion_point(class_definition:st.proxy.proto.session_record) */ {
+        public:
+            session_record();
+            virtual ~session_record();
 
-  inline session_record& operator=(const session_record& from) {
+            session_record(const session_record &from);
+
+            inline session_record& operator=(const session_record& from) {
     CopyFrom(from);
     return *this;
   }
@@ -319,16 +332,23 @@ class quality_record :
   ::google::protobuf::uint32 first_package_failed() const;
   void set_first_package_failed(::google::protobuf::uint32 value);
 
+  // .st.proxy.proto.record_type type = 6;
+  void clear_type();
+  static const int kTypeFieldNumber = 6;
+  ::st::proxy::proto::record_type type() const;
+  void set_type(::st::proxy::proto::record_type value);
+
   // @@protoc_insertion_point(class_scope:st.proxy.proto.quality_record)
- private:
+  private:
   class HasBitSetters;
 
   ::google::protobuf::internal::InternalMetadataWithArenaLite _internal_metadata_;
-  ::google::protobuf::RepeatedPtrField< ::st::proxy::proto::session_record > records_;
+  ::google::protobuf::RepeatedPtrField<::st::proxy::proto::session_record> records_;
   ::google::protobuf::uint32 queue_size_;
   ::google::protobuf::uint32 first_package_cost_;
   ::google::protobuf::uint32 first_package_success_;
   ::google::protobuf::uint32 first_package_failed_;
+  int type_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_message_2eproto;
 };
@@ -466,28 +486,49 @@ inline void quality_record::clear_first_package_failed() {
   first_package_failed_ = 0u;
 }
 inline ::google::protobuf::uint32 quality_record::first_package_failed() const {
-  // @@protoc_insertion_point(field_get:st.proxy.proto.quality_record.first_package_failed)
-  return first_package_failed_;
+    // @@protoc_insertion_point(field_get:st.proxy.proto.quality_record.first_package_failed)
+    return first_package_failed_;
 }
 inline void quality_record::set_first_package_failed(::google::protobuf::uint32 value) {
-  
-  first_package_failed_ = value;
-  // @@protoc_insertion_point(field_set:st.proxy.proto.quality_record.first_package_failed)
+
+    first_package_failed_ = value;
+    // @@protoc_insertion_point(field_set:st.proxy.proto.quality_record.first_package_failed)
+}
+
+// .st.proxy.proto.record_type type = 6;
+inline void quality_record::clear_type() { type_ = 0; }
+inline ::st::proxy::proto::record_type quality_record::type() const {
+    // @@protoc_insertion_point(field_get:st.proxy.proto.quality_record.type)
+    return static_cast<::st::proxy::proto::record_type>(type_);
+}
+inline void quality_record::set_type(::st::proxy::proto::record_type value) {
+
+    type_ = value;
+    // @@protoc_insertion_point(field_set:st.proxy.proto.quality_record.type)
 }
 
 #ifdef __GNUC__
-  #pragma GCC diagnostic pop
-#endif  // __GNUC__
+#pragma GCC diagnostic pop
+#endif// __GNUC__
 // -------------------------------------------------------------------
 
 
 // @@protoc_insertion_point(namespace_scope)
 
-}  // namespace proto
-}  // namespace proxy
-}  // namespace st
+    }// namespace proto
+}// namespace proxy
+}// namespace st
+
+namespace google {
+    namespace protobuf {
+
+        template<>
+        struct is_proto_enum<::st::proxy::proto::record_type> : ::std::true_type {};
+
+    }// namespace protobuf
+}// namespace google
 
 // @@protoc_insertion_point(global_scope)
 
 #include <google/protobuf/port_undef.inc>
-#endif  // PROTOBUF_INCLUDED_message_2eproto
+#endif// PROTOBUF_INCLUDED_message_2eproto
