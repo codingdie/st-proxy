@@ -42,7 +42,7 @@ bool proxy_server::add_nat_whitelist() {
         if (!nat_utils::INSTANCE.addToWhitelist(ip)) {
             return false;
         }
-        logger::INFO << "add_nat_whitelist" << ipv4::ip_to_str(ip) << END;
+        logger::INFO << "add nat whitelist" << ipv4::ip_to_str(ip) << END;
     }
     return true;
 }
@@ -55,7 +55,7 @@ bool proxy_server::intercept_nat_traffic(bool intercept) {
     if (shell::exec(command, result, error)) {
         return true;
     } else {
-        logger::ERROR << "intercept_nat_traffic error!" << error << END;
+        logger::ERROR << "intercept nat traffic error!" << error << END;
         return false;
     }
 }
