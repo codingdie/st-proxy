@@ -42,7 +42,7 @@ bool proxy_server::add_nat_whitelist() {
         if (!nat_utils::INSTANCE.addToWhitelist(ip)) {
             return false;
         }
-        logger::INFO << "add_nat_whitelist" << ipv4::ip_to_str(ip) << END;
+        logger::INFO << "add nat whitelist" << ipv4::ip_to_str(ip) << END;
     }
     return true;
 }
@@ -55,7 +55,7 @@ bool proxy_server::intercept_nat_traffic(bool intercept) {
     if (shell::exec(command, result, error)) {
         return true;
     } else {
-        logger::ERROR << "intercept_nat_traffic error!" << error << END;
+        logger::ERROR << "intercept nat traffic error!" << error << END;
         return false;
     }
 }
@@ -84,7 +84,7 @@ void proxy_server::start() {
     threads.emplace_back([=]() { schedule_ic->run(); });
     manager = new session_manager(schedule_ic);
     quality_analyzer::uniq().set_io_context(schedule_ic);
-    logger::INFO << "st-proxy server started with" << worker_num << "worker, listen at"
+    logger::INFO << "st-proxy start with" << worker_num << "worker, listen at"
                  << st::proxy::config::INSTANCE.ip + ":" + to_string(st::proxy::config::INSTANCE.port) << END;
     this->state = 1;
     boss_ctx.run();
