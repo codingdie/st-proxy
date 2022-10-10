@@ -31,7 +31,7 @@ void config::load(const string &configPathInput) {
                 auto domain = v.second.get_value<string>();
                 this->whitelist.emplace(domain);
             }
-            this->whitelistIPs = parseWhitelistToIPs(this->whitelist);
+            this->whitelistIPs = parse_whitelist_to_ips(this->whitelist);
         }
         auto tunnelNodes = tree.get_child("tunnels");
         if (!tunnelNodes.empty()) {
@@ -47,7 +47,7 @@ void config::load(const string &configPathInput) {
         exit(1);
     }
 }
-set<uint32_t> config::parseWhitelistToIPs(const set<string> &domains) const {
+set<uint32_t> config::parse_whitelist_to_ips(const set<string> &domains) const {
     set<uint32_t> result;
     for (auto domain : domains) {
         if (st::utils::ipv4::str_to_ip(domain) > 0) {
@@ -56,10 +56,9 @@ set<uint32_t> config::parseWhitelistToIPs(const set<string> &domains) const {
             if (domain[0] == '*') {
                 continue;
             }
-            auto ips = resovleDomain(domain);
+            auto ips = resolve_domain(domain);
             if (ips.empty()) {
-                logger::ERROR << "resovle domains to ip failed!" << domain << domain << END;
-                exit(1);
+                logger::WARN << "resolve domains to ip failed!" << domain << domain << END;
             }
             for (auto ipTmp : ips) {
                 result.emplace(ipTmp);
@@ -115,19 +114,18 @@ stream_tunnel *config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
             string domain = v.second.get_value<string>();
             streamTunnel->whitelist.emplace(domain);
         }
-        streamTunnel->whitelistIPs = parseWhitelistToIPs(streamTunnel->whitelist);
+        streamTunnel->whitelistIPs = parse_whitelist_to_ips(streamTunnel->whitelist);
     }
     return streamTunnel;
 }
-vector<uint32_t> config::resovleDomain(const string &domain) const {
-    io_context ioContext;
+vector<uint32_t> config::resolve_domain(const string &domain) const {
     vector<uint32_t> ips = st::utils::dns::query(domain);
     if (!dns.empty()) {
-        vector<uint32_t> preferIPs = st::utils::dns::query(dns, domain);
-        if (!preferIPs.empty()) {
-            ips = preferIPs;
+        vector<uint32_t> results = st::utils::dns::query(dns, domain);
+        if (!results.empty()) {
+            ips = results;
         }
     }
-    logger::INFO << "resovle domain" << domain << st::utils::ipv4::ips_to_str(ips) << END;
+    logger::INFO << "resolve domain" << domain << st::utils::ipv4::ips_to_str(ips) << END;
     return ips;
 }

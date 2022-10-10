@@ -39,12 +39,12 @@ namespace st {
             config() = default;
 
             void load(const string &configPathInput);
-            vector<uint32_t> resovleDomain(const string &domain) const;
+            vector<uint32_t> resolve_domain(const string &domain) const;
 
         private:
             template<class K, class D, class C>
             stream_tunnel *parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const;
-            set<uint32_t> parseWhitelistToIPs(const set<string> &domains) const;
+            set<uint32_t> parse_whitelist_to_ips(const set<string> &domains) const;
         };
     };// namespace proxy
 }// namespace st
