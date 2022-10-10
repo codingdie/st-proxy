@@ -11,7 +11,7 @@ quality_analyzer &quality_analyzer::uniq() {
     return instance;
 }
 
-void quality_analyzer::record_first_package_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
+void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
     execute([=]() {
         session_record se;
         se.set_first_package_cost(0);

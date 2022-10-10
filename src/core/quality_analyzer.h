@@ -17,7 +17,7 @@ class quality_analyzer {
 public:
     quality_analyzer();
     static quality_analyzer &uniq();
-    void record_first_package_failed(uint32_t dist_ip, stream_tunnel *tunnel);
+    void record_failed(uint32_t dist_ip, stream_tunnel *tunnel);
     void record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip, stream_tunnel *tunnel);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip);

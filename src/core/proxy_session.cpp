@@ -52,7 +52,7 @@ void proxy_session::start() {
     select_tunnels();
     apm_logger::perf("st-proxy-select-tunnels", {}, time::now() - begin);
 
-    if (targetTunnels.empty()) {
+    if (selected_tunnels.empty()) {
         logger::ERROR << idStr() << "cal tunnels empty!" << END;
         shutdown();
         return;
@@ -61,15 +61,15 @@ void proxy_session::start() {
 }
 
 void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_handler) {
-    if (tryConnectIndex < targetTunnels.size() && this->stage == CONNECTING) {
-        stream_tunnel *tunnel = targetTunnels[tryConnectIndex];
+    if (try_connect_index < selected_tunnels.size() && this->stage == CONNECTING) {
+        stream_tunnel *tunnel = selected_tunnels[try_connect_index];
         auto complete = [=](bool success) {
             if (success) {
                 this->connected_tunnel = tunnel;
                 complete_handler(true);
             } else {
                 logger::ERROR << idStr() << "connect" << tunnel->id() << "failed!" << END;
-                tryConnectIndex++;
+                try_connect_index++;
                 connect_tunnels(complete_handler);
             }
         };
@@ -95,6 +95,9 @@ void proxy_session::try_connect() {
             readClient();
             readProxy();
         } else {
+            for (auto i = 0; i <= try_connect_index && i < selected_tunnels.size(); i++) {
+                quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), selected_tunnels[i]);
+            }
             shutdown();
         }
         apm_logger::perf("st-proxy-connect", dimensions({{"success", to_string(success)}}), connect_cost);
@@ -150,7 +153,7 @@ void proxy_session::select_tunnels() {
     int i = 0;
     for (auto &it : tunnels) {
         stream_tunnel *tunnel = it.first;
-        targetTunnels.emplace_back(tunnel);
+        selected_tunnels.emplace_back(tunnel);
         logger::DEBUG << "[" + to_string(++i) + "]" + tunnel->id() + "[" + to_string(it.second.first) + "/" +
                                  to_string(it.second.second.first_package_success()) + "/" +
                                  to_string(it.second.second.first_package_failed()) + "/" +
@@ -327,8 +330,7 @@ void proxy_session::readProxy() {
                     apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
                                      this->first_packet_time);
                     if (error) {
-                        quality_analyzer::uniq().record_first_package_failed(dist_end.address().to_v4().to_uint(),
-                                                                             connected_tunnel);
+                        quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
                         logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
                     } else {
                         quality_analyzer::uniq().record_first_package_success(
@@ -494,7 +496,7 @@ unordered_map<string, string> proxy_session::dimensions(unordered_map<string, st
             {"tunnel", connected_tunnel != nullptr ? connected_tunnel->id() : ""},
             {"tunnelType", connected_tunnel != nullptr ? connected_tunnel->type : ""},
             {"tunnelArea", connected_tunnel != nullptr ? connected_tunnel->area : ""},
-            {"tunnelIndex", connected_tunnel != nullptr ? to_string(connectingTunnelIndex) : "-1"},
+            {"tunnelIndex", connected_tunnel != nullptr ? to_string(try_connect_index) : "-1"},
             {"clientIP", clientEnd.address().to_string()},
             {"distHost", distHost},
             {"distArea", distArea},

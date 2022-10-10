@@ -42,14 +42,13 @@ public:
     unordered_map<string, string> dimensions(unordered_map<string, string> &&dimensions);
 
 private:
-    vector<stream_tunnel *> targetTunnels;
+    vector<stream_tunnel *> selected_tunnels;
     byte *readClientBuffer;
     byte *writeProxyBuffer;
     byte *writeClientBuffer;
     byte *readProxyBuffer;
     mutex stageLock;
-    int connectingTunnelIndex = 0;
-    uint64_t tryConnectIndex = 0;
+    uint64_t try_connect_index = 0;
     uint64_t begin = 0;
     string preferArea;
     string distArea;
