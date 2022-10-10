@@ -34,12 +34,12 @@ TEST(unit_tests, test_quality_analyzer) {
     auto s_record = record.records((record.queue_size() - 1) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
     ASSERT_TRUE(s_record.success());
     ASSERT_EQ(s_record.first_package_cost(), 999);
+    s_record = record.records((record.queue_size() - 2) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
+    ASSERT_TRUE(s_record.success());
+    ASSERT_EQ(s_record.first_package_cost(), 30);
     s_record = record.records((record.queue_size() - 3) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
     ASSERT_FALSE(s_record.success());
     ASSERT_EQ(s_record.first_package_cost(), 0);
-    s_record = record.records((record.queue_size() - 4) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
-    ASSERT_TRUE(s_record.success());
-    ASSERT_EQ(s_record.first_package_cost(), 90);
     delete tunnel;
 }
 
