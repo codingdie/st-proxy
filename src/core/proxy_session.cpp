@@ -123,7 +123,7 @@ void proxy_session::select_tunnels() {
         }
         const proxy::proto::quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
         if (!quality_analyzer::is_valid(record)) {
-            score -= -10000;
+            score -= 10000;
         }
         tunnels.emplace_back(tunnel, make_pair(score, record));
     }
