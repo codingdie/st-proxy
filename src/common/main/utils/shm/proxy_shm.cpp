@@ -20,5 +20,15 @@ namespace st {
             uint64_t time = std::stoull(str);
             return utils::time::now() - time < IP_FORBID_TIME;
         }
+        std::vector<std::string> shm::forbid_ip_list() {
+            std::vector<std::string> result;
+            ip_blacklist->list([&result](const std::string &key, const std::string &value) {
+                uint64_t time = std::stoull(value);
+                if (utils::time::now() - time < IP_FORBID_TIME) {
+                    result.emplace_back(key);
+                }
+            });
+            return result;
+        }
     }// namespace proxy
 }// namespace st

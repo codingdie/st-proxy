@@ -20,6 +20,7 @@ namespace st {
             void forbid_ip(uint32_t ip);
             void recover_ip(uint32_t ip);
             bool is_ip_forbid(uint32_t ip);
+            std::vector<std::string> forbid_ip_list();
             static shm &uniq();
             static const uint32_t IP_FORBID_TIME = 60L * 10L * 1000L;
         };

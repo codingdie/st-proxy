@@ -17,6 +17,7 @@ public:
     st::proxy::proto::quality_record get_record(uint32_t dist_ip, stream_tunnel *tunnel);
     unordered_map<string, st::proxy::proto::quality_record> get_all_tunnel_record(uint32_t dist_ip);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip);
+
     static bool is_tunnel_valid(const st::proxy::proto::quality_record &record);
     static bool has_enough_data(const st::proxy::proto::quality_record &record);
     string analyse_ip(uint32_t ip);
@@ -26,8 +27,9 @@ public:
     void set_io_context(io_context *context);
     static const uint8_t IP_TUNNEL_MAX_QUEUE_SIZE = 3;
     static const uint8_t IP_MAX_QUEUE_SIZE = 10;
+    static const long RECORD_EXPIRE_TIME = 1000L * 60 * 60 * 24;
 
-    string analyse_domain(string domain);
+    string analyse_domain(const string &domain);
 
 private:
     st::kv::disk_kv db;

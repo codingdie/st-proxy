@@ -21,6 +21,8 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
         auto ip_record = get_record(dist_ip);
         add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
+        ip_record = get_record(dist_ip);
+        process_record(ip_record, IP_MAX_QUEUE_SIZE, RECORD_EXPIRE_TIME);
         if (need_forbid_ip(ip_record)) {
             proxy::shm::uniq().forbid_ip(dist_ip);
             del_ip_all_tunnel_record(dist_ip);
@@ -41,6 +43,7 @@ void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tun
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
         auto ip_record = get_record(dist_ip);
         add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
+        process_record(ip_record, IP_MAX_QUEUE_SIZE, RECORD_EXPIRE_TIME);
         if (!need_forbid_ip(ip_record)) {
             proxy::shm::uniq().recover_ip(dist_ip);
         }
@@ -69,8 +72,7 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
 quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tunnel) {
     auto key = build_key(dist_ip, tunnel);
     quality_record record = get_record(key);
-
-    process_record(record, IP_TUNNEL_MAX_QUEUE_SIZE, 1000L * 60 * 60 * 24);
+    process_record(record, IP_TUNNEL_MAX_QUEUE_SIZE, RECORD_EXPIRE_TIME);
     return record;
 }
 
@@ -158,7 +160,6 @@ void quality_analyzer::add_session_record(const string &key, quality_record &rec
     record.clear_first_package_failed();
     record.clear_first_package_success();
     db.put(key, record.SerializeAsString());
-    process_record(record, IP_MAX_QUEUE_SIZE, st::proxy::shm::IP_FORBID_TIME);
 }
 void quality_analyzer::execute(std::function<void()> func) {
     if (ic != nullptr) {
@@ -206,10 +207,10 @@ string quality_analyzer::analyse_ip(uint32_t ip) {
     strutils::trim(str);
     return str;
 }
-string quality_analyzer::analyse_domain(string domain) {
+string quality_analyzer::analyse_domain(const string &domain) {
     string str;
     for (const auto &ip : st::utils::dns::query(st::proxy::config::uniq().dns, domain)) {
-        str.append(analyse_ip(ip)).append("\n");
+        str.append(analyse_ip(ip)).append("\n\n");
     }
     strutils::trim(str);
     return str;
