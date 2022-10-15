@@ -136,7 +136,7 @@ quality_analyzer::quality_analyzer() : db("st-proxy-quality", 2 * 1024 * 1204) {
         }
         return record;
     });
-    logger::INFO << "quality analyser has" << ip_count << "ip and " << ip_tunnel_count << "record";
+    logger::INFO << "quality analyser has" << ip_count << "ip and " << ip_tunnel_count << "record" << END;
 }
 string quality_analyzer::build_key(uint32_t dist_ip, stream_tunnel *tunnel) {
     return st::utils::ipv4::ip_to_str(dist_ip) + "/" + tunnel->id();
