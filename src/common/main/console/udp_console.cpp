@@ -44,7 +44,8 @@ namespace st {
             th->join();
             delete th;
         }
-        pair<vector<std::string>, boost::program_options::variables_map> udp_console::parse_command(const string &command) {
+        pair<vector<std::string>, boost::program_options::variables_map>
+        udp_console::parse_command(const string &command) const {
             namespace po = boost::program_options;
             po::variables_map vm;
             auto splits = utils::strutils::split(command, " ");

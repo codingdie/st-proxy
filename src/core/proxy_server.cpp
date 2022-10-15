@@ -28,25 +28,26 @@ proxy_server::proxy_server()
     config_console();
 }
 void proxy_server::config_console() {
-    console.desc.add_options()("ip", "ip")("domain", "domain")("help", "produce help message");
+    console.desc.add_options()("ip", boost::program_options::value<string>()->default_value(""),
+                               "ip")("domain", boost::program_options::value<string>()->default_value(""),
+                                     "domain")("help", "produce help message");
     console.impl = [](const vector<string> &commands, const boost::program_options::variables_map &options) {
         auto command = utils::strutils::join(commands, " ");
         std::pair<bool, std::string> result = make_pair(false, "not invalid command");
+        string domain;
+        string ip;
+        if (options.count("domain")) {
+            domain = options["domain"].as<string>();
+        }
+        if (options.count("ip")) {
+            ip = options["ip"].as<string>();
+        }
         if (command == "proxy analyse") {
-            if (options.count("domain")) {
-                auto domain = options["domain"].as<string>();
-                if (!domain.empty()) {
-                    string str = quality_analyzer::uniq().analyse_domain(domain);
-                    return make_pair(true, str);
-                }
+            if (!domain.empty()) {
+                return make_pair(true, quality_analyzer::uniq().analyse_domain(domain));
             }
-            if (options.count("ip")) {
-                auto ipStr = options["ip"].as<string>();
-                if (!ipStr.empty()) {
-                    auto ip = utils::ipv4::str_to_ip(ipStr);
-                    string str = quality_analyzer::uniq().analyse_ip(ip);
-                    return make_pair(true, str);
-                }
+            if (!ip.empty()) {
+                return make_pair(true, quality_analyzer::uniq().analyse_ip(utils::ipv4::str_to_ip(ip)));
             }
         } else if (command == "proxy blacklist") {
             string str;
