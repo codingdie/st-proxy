@@ -2,7 +2,7 @@
 // Created by codingdie on 9/23/22.
 //
 #include "quality_analyzer.h"
-#include "utils/utils.h"
+#include "st.h"
 #include <gtest/gtest.h>
 TEST(unit_tests, test_quality_analyzer_forbid) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);

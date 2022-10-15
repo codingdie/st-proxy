@@ -2,7 +2,7 @@
 // Created by codingdie on 2020/6/27.
 //
 #include "proxy_server.h"
-#include "utils/utils.h"
+#include "st.h"
 #include <stdlib.h>
 
 static const vector<string> availablePaths({"../confs", "/usr/local/etc/st/proxy", "/etc/st/proxy"});

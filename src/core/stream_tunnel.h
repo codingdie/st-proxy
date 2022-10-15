@@ -5,7 +5,7 @@
 #ifndef ST_PROXY_StreamTunnel_H
 #define ST_PROXY_StreamTunnel_H
 
-#include "utils/utils.h"
+#include "st.h"
 #include <map>
 #include <vector>
 #include <utility>

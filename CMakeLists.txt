@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -lpthread -latomic -Wall -g")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Os")
 
 find_package(OpenSSL 1.0.2 REQUIRED)
-find_package(Boost 1.66.0 REQUIRED COMPONENTS system filesystem thread)
+find_package(Boost 1.66.0 REQUIRED COMPONENTS system filesystem thread program_options)
 find_package(leveldb REQUIRED)
 
 
@@ -14,28 +14,32 @@ find_package(leveldb REQUIRED)
 if (NOT OPENWRT)
     add_custom_target(
             st-proxy-proto
-            COMMAND rm -f ${CMAKE_CURRENT_LIST_DIR}/proto/*.h ${CMAKE_CURRENT_LIST_DIR}/proto/*.cc
-            COMMAND protoc -I=${CMAKE_CURRENT_LIST_DIR}/proto --cpp_out=${CMAKE_CURRENT_LIST_DIR}/proto message.proto)
+            COMMAND protoc -I=${CMAKE_CURRENT_LIST_DIR}/src/core/proto --cpp_out=${CMAKE_CURRENT_LIST_DIR}/src/core/proto message.proto)
+    add_custom_target(
+            st-common-proto
+            COMMAND rm -f ${CMAKE_CURRENT_LIST_DIR}/src/common/proto/*.h ${CMAKE_CURRENT_LIST_DIR}/src/common/proto/*.cc
+            COMMAND protoc -I=${CMAKE_CURRENT_LIST_DIR}/src/common/proto --cpp_out=${CMAKE_CURRENT_LIST_DIR}/src/common/proto kv.proto)
 endif ()
 
 #include
 include_directories(src/core)
-include_directories(src/common)
+include_directories(src/common/main)
 include_directories(src/test)
-include_directories(proto)
 IF (APPLE)
     include_directories(src/pf/10.15.6)
 ENDIF ()
 
 
 #st-proxy target
-file(GLOB_RECURSE SOURCE_FILES src/core/*.cpp proto/*.cc)
-file(GLOB_RECURSE SOURCE_COMMON_FILES src/common/*.cpp)
+file(GLOB_RECURSE SOURCE_FILES src/core/*.cpp  src/core/*.cc)
+file(GLOB_RECURSE SOURCE_COMMON_FILES src/common/main/*.cpp src/common/main/*.cc)
 file(GLOB_RECURSE SOURCE_INTEGRATION_TEST_FILES src/test/integration/*.cpp)
 file(GLOB_RECURSE SOURCE_UNIT_TEST_FILES src/test/unit/*.cpp)
+file(GLOB_RECURSE SOURCE_ST_UNIT_TEST_FILES src/common/test/*.cpp)
 
 add_executable(st-proxy src/server/main.cpp ${SOURCE_FILES} ${SOURCE_COMMON_FILES})
 set(OTHER_LIBRARIES "rt" "leveldb::leveldb" "libprotobuf-lite.a")
+message(${Boost_LIBRARIES})
 target_link_libraries(st-proxy ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES})
 
 
@@ -63,12 +67,15 @@ if (NOT OPENWRT)
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(googletest)
     enable_testing()
+    add_executable(st-unit-test ${SOURCE_ST_UNIT_TEST_FILES} ${SOURCE_COMMON_FILES})
     add_executable(st-proxy-unit-test ${SOURCE_UNIT_TEST_FILES} ${SOURCE_FILES} ${SOURCE_COMMON_FILES})
     add_executable(st-proxy-integration-test ${SOURCE_INTEGRATION_TEST_FILES} ${SOURCE_FILES} ${SOURCE_COMMON_FILES})
+    target_link_libraries(st-unit-test gtest_main ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES})
     target_link_libraries(st-proxy-unit-test gtest_main ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES})
     target_link_libraries(st-proxy-integration-test gtest_main ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES})
 
     include(GoogleTest)
+    gtest_discover_tests(st-unit-test)
     gtest_discover_tests(st-proxy-unit-test)
     gtest_discover_tests(st-proxy-integration-test)
 endif ()

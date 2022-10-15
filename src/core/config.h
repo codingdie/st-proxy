@@ -6,7 +6,7 @@
 #define ST_PROXY_CONFIG_H
 
 #include "stream_tunnel.h"
-#include "utils/utils.h"
+#include "st.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
