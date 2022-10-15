@@ -15,9 +15,11 @@ public:
     void record_failed(uint32_t dist_ip, stream_tunnel *tunnel);
     void record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip, stream_tunnel *tunnel);
+    unordered_map<string, st::proxy::proto::quality_record> get_all_tunnel_record(uint32_t dist_ip);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip);
-    static bool is_valid(const st::proxy::proto::quality_record &record);
-    static bool is_enough(const st::proxy::proto::quality_record &record);
+    static bool is_tunnel_valid(const st::proxy::proto::quality_record &record);
+    static bool has_enough_data(const st::proxy::proto::quality_record &record);
+    string analyse_ip(uint32_t ip);
 
     void clear();
     virtual ~quality_analyzer();
@@ -37,7 +39,7 @@ private:
     static void process_record(st::proxy::proto::quality_record &record, uint32_t max_size, uint32_t expire);
     proxy::proto::quality_record get_record(const string &key);
     void execute(std::function<void()> func);
-    bool need_forbid_ip(const proxy::proto::quality_record &record);
+    static bool need_forbid_ip(const proxy::proto::quality_record &record);
     void del_ip_all_tunnel_record(uint32_t dist_ip);
 };
 

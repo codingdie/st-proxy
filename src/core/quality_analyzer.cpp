@@ -28,7 +28,7 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
     });
 }
 void quality_analyzer::del_ip_all_tunnel_record(uint32_t dist_ip) {
-    for (const auto &item : proxy::config::INSTANCE.tunnels) {
+    for (const auto &item : proxy::config::uniq().tunnels) {
         db.erase(build_key(dist_ip, item));
     }
 }
@@ -145,10 +145,10 @@ string quality_analyzer::build_key(uint32_t dist_ip) { return st::utils::ipv4::i
 
 void quality_analyzer::clear() {}
 void quality_analyzer::set_io_context(io_context *context) { this->ic = context; }
-bool quality_analyzer::is_valid(const st::proxy::proto::quality_record &record) {
+bool quality_analyzer::is_tunnel_valid(const st::proxy::proto::quality_record &record) {
     return record.first_package_failed() < 3 || record.first_package_success() > 0;
 }
-bool quality_analyzer::is_enough(const quality_record &record) {
+bool quality_analyzer::has_enough_data(const quality_record &record) {
     return record.first_package_failed() + record.first_package_success() == IP_TUNNEL_MAX_QUEUE_SIZE;
 }
 void quality_analyzer::add_session_record(const string &key, quality_record &record,
@@ -169,4 +169,40 @@ void quality_analyzer::execute(std::function<void()> func) {
 }
 bool quality_analyzer::need_forbid_ip(const quality_record &record) {
     return record.first_package_failed() == IP_MAX_QUEUE_SIZE;
+}
+unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_all_tunnel_record(uint32_t dist_ip) {
+    unordered_map<string, st::proxy::proto::quality_record> result;
+    for (const auto &tunnel : proxy::config::uniq().tunnels) {
+        auto record = get_record(dist_ip, tunnel);
+        if (record.records_size() > 0) {
+            result.emplace(make_pair(tunnel->id(), record));
+        }
+    }
+    return result;
+}
+
+string quality_analyzer::analyse_ip(uint32_t ip) {
+    string str;
+    auto ip_record = get_record(ip);
+    str.append("total")
+            .append("\t")
+            .append(to_string(ip_record.first_package_success()))
+            .append("\t")
+            .append(to_string(ip_record.first_package_failed()))
+            .append("\t")
+            .append(to_string(ip_record.first_package_cost()))
+            .append("\n");
+    auto records = get_all_tunnel_record(ip);
+    for (auto &record : records) {
+        str.append(record.first)
+                .append("\t")
+                .append(to_string(record.second.first_package_success()))
+                .append("\t")
+                .append(to_string(record.second.first_package_failed()))
+                .append("\t")
+                .append(to_string(record.second.first_package_cost()))
+                .append("\n");
+    }
+    strutils::trim(str);
+    return str;
 }

@@ -6,8 +6,6 @@
 
 using namespace st::proxy;
 using namespace st::utils;
-config config::INSTANCE;
-
 void config::load(const string &configPathInput) {
     baseConfDir = boost::filesystem::absolute(configPathInput).normalize().string();
     string configPath = configPathInput + "/config.json";
@@ -19,8 +17,10 @@ void config::load(const string &configPathInput) {
             logger::ERROR << " parse config file " + configPath + " error!" << e.message() << END;
             exit(1);
         }
-        this->ip = tree.get("ip", string(this->ip));
+        this->ip = tree.get("ip", this->ip);
         this->port = stoi(tree.get("port", to_string(this->port)));
+        this->console_ip = tree.get("console_ip", console_ip);
+        this->console_port = tree.get("console_port", console_port);
         this->so_timeout = stoi(tree.get("so_timeout", to_string(this->so_timeout)));
         this->connect_timeout = stoi(tree.get("connect_timeout", to_string(this->connect_timeout)));
         this->dns = tree.get("dns", string(this->dns));
@@ -128,4 +128,8 @@ vector<uint32_t> config::resolve_domain(const string &domain) const {
     }
     logger::INFO << "resolve domain" << domain << st::utils::ipv4::ips_to_str(ips) << END;
     return ips;
+}
+config &config::uniq() {
+    static config INSTANCE;
+    return INSTANCE;
 }
