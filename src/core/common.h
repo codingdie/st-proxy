@@ -6,7 +6,7 @@
 #define ST_PROXY_COMMON_H
 
 #include "config.h"
-#include "utils/utils.h"
+#include "st.h"
 #include <atomic>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
