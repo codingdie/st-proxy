@@ -25,8 +25,8 @@ public:
     void clear();
     virtual ~quality_analyzer();
     void set_io_context(io_context *context);
-    static const uint8_t IP_TUNNEL_MAX_QUEUE_SIZE = 3;
-    static const uint8_t IP_MAX_QUEUE_SIZE = 10;
+    static const uint8_t TUNNEL_TEST_COUNT = 3;
+    static uint8_t IP_TEST_COUNT;
     static const long RECORD_EXPIRE_TIME = 1000L * 60 * 60 * 24;
 
     string analyse_domain(const string &domain);

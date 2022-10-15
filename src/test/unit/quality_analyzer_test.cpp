@@ -8,7 +8,7 @@ TEST(proxy_unit_tests, test_quality_analyzer_forbid) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int dist_ip = 3;
     auto old_record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-    for (auto i = 0; i < quality_analyzer::IP_MAX_QUEUE_SIZE + 1; i++) {
+    for (auto i = 0; i < quality_analyzer::IP_TEST_COUNT + 1; i++) {
         quality_analyzer::uniq().record_failed(dist_ip, tunnel);
     }
 
@@ -29,13 +29,13 @@ TEST(proxy_unit_tests, test_quality_analyzer) {
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 999);
     auto record = quality_analyzer::uniq().get_record(distIp, tunnel);
     ASSERT_EQ(record.queue_size() - old_record.queue_size(), 5);
-    auto s_record = record.records((record.queue_size() - 1) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
+    auto s_record = record.records((record.queue_size() - 1) % quality_analyzer::TUNNEL_TEST_COUNT);
     ASSERT_TRUE(s_record.success());
     ASSERT_EQ(s_record.first_package_cost(), 999);
-    s_record = record.records((record.queue_size() - 2) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
+    s_record = record.records((record.queue_size() - 2) % quality_analyzer::TUNNEL_TEST_COUNT);
     ASSERT_TRUE(s_record.success());
     ASSERT_EQ(s_record.first_package_cost(), 30);
-    s_record = record.records((record.queue_size() - 3) % quality_analyzer::IP_TUNNEL_MAX_QUEUE_SIZE);
+    s_record = record.records((record.queue_size() - 3) % quality_analyzer::TUNNEL_TEST_COUNT);
     ASSERT_FALSE(s_record.success());
     ASSERT_EQ(s_record.first_package_cost(), 0);
     delete tunnel;
