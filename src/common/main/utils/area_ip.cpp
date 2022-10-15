@@ -20,30 +20,10 @@ namespace st {
             static manager instance;
             return instance;
         }
-        void manager::init_area_code_name_map() {
-            if (CN_AREA_2_AREA.empty()) {
-                try {
-                    ptree tree;
-                    std::stringstream results(CN_CODE_JSON);
-                    read_json(results, tree);
-                    for (auto it = tree.begin(); it != tree.end(); it++) {
-                        auto key = it->first;
-                        auto value = it->second.get_value<string>();
-                        CN_AREA_2_AREA[key] = value;
-                    }
-                } catch (json_parser_error &e) {
-                    logger::ERROR << "init_area_code_name_map error! not valid json" << e.message() << CN_CODE_JSON
-                                  << END;
-                }
-            }
-        }
-
-        manager::manager() {
-            init_area_code_name_map();
-            ctx = new boost::asio::io_context();
-            stat_timer = new boost::asio::deadline_timer(*ctx);
-            ctx_work = new boost::asio::io_context::work(*ctx);
-            th = new thread([=]() { ctx->run(); });
+        manager::manager() : ctx() {
+            ctx_work = new boost::asio::io_context::work(ctx);
+            stat_timer = new boost::asio::deadline_timer(ctx);
+            th = new thread([this]() { this->ctx.run(); });
             vector<area_ip_range> ips;
             ips.emplace_back(area_ip_range::parse("192.168.0.0/16", "LAN"));
             ips.emplace_back(area_ip_range::parse("10.0.0.0/8", "LAN"));
@@ -53,10 +33,10 @@ namespace st {
             sync_net_area_ip();
         }
         manager::~manager() {
-            ctx->stop();
-            th->join();
-            delete ctx;
+            stat_timer->cancel();
+            ctx.stop();
             delete ctx_work;
+            th->join();
             delete th;
             delete stat_timer;
         }
@@ -168,7 +148,7 @@ namespace st {
             return "";
         }
         void manager::async_load_ip_info(const uint32_t &ip) {
-            std::function<void(const uint32_t &ip)> doLoadIPInfo = [=](const uint32_t &ip) {
+            std::function<void(const uint32_t &ip)> doLoadIPInfo = [this](const uint32_t &ip) {
                 uint64_t begin = st::utils::time::now();
                 if (get_area(ip, net_caches).empty()) {
                     auto ipInfos = load_ip_info(ip);
@@ -196,11 +176,11 @@ namespace st {
                     logger::INFO << "async load ip info skipped!" << st::utils::ipv4::ip_to_str(ip) << END;
                 }
             };
-            ctx->post(boost::bind(doLoadIPInfo, ip));
+            ctx.post(boost::bind(doLoadIPInfo, ip));
         }
 
         bool manager::is_area_ip(const string &areaCode, const uint32_t &ip,
-                                 unordered_map<string, vector<area_ip_range>> &caches) {
+                                 const unordered_map<string, vector<area_ip_range>> &caches) {
             //todo find fast
             auto iterator = caches.find(areaCode);
             if (iterator != caches.end()) {
@@ -213,7 +193,7 @@ namespace st {
             return false;
         }
 
-        string manager::get_area(const uint32_t &ip, unordered_map<string, vector<area_ip_range>> &caches) {
+        string manager::get_area(const uint32_t &ip, const unordered_map<string, vector<area_ip_range>> &caches) {
             if (ip != 0) {
                 for (auto it = caches.begin(); it != caches.end(); it++) {
                     string area = (*it).first;
@@ -225,9 +205,9 @@ namespace st {
             return "";
         }
 
-        string manager::get_area(const uint32_t &ip, unordered_map<uint32_t, string> &caches) {
+        string manager::get_area(const uint32_t &ip, const unordered_map<uint32_t, string> &caches) {
             if (caches.find(ip) != caches.end()) {
-                return caches[ip];
+                return caches.at(ip);
             }
             return "";
         }

@@ -54,11 +54,8 @@ namespace st {
                 ip::udp::resolver::iterator ipIt = slv.resolve(qry, error);
                 ip::udp::resolver::iterator end;
                 for (; ipIt != end; ipIt++) {
-                    auto addr = (*ipIt).endpoint().address();
-                    if (addr.is_v4()) {
-                        auto ip = addr.to_v4().to_uint();
-                        resultIPs.emplace_back(ip);
-                    }
+                    auto ip = (*ipIt).endpoint().address().to_v4().to_uint();
+                    resultIPs.emplace_back(ip);
                 }
                 return resultIPs;
             }
