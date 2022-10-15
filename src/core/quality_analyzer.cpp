@@ -209,9 +209,13 @@ string quality_analyzer::analyse_ip(uint32_t ip) {
 }
 string quality_analyzer::analyse_domain(const string &domain) {
     string str;
+    vector<string> strs;
     for (const auto &ip : st::utils::dns::query(st::proxy::config::uniq().dns, domain)) {
-        str.append(analyse_ip(ip)).append("\n\n");
+        strs.emplace_back(analyse_ip(ip));
     }
+    std::sort(strs.begin(), strs.end(),
+              [](const string &str1, const string &str2) { return str2.length() < str1.length(); });
+    str = join(strs, "\n\n");
     strutils::trim(str);
     return str;
 }
