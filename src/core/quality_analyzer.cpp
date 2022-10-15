@@ -7,6 +7,7 @@
 #include "leveldb/cache.h"
 #include "utils/shm/proxy_shm.h"
 using namespace st::proxy::proto;
+uint8_t quality_analyzer::IP_TEST_COUNT = 10;
 quality_analyzer &quality_analyzer::uniq() {
     static quality_analyzer instance;
     return instance;
@@ -18,11 +19,11 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         se.set_first_package_cost(0);
         se.set_success(false);
         auto tunnel_record = get_record(dist_ip, tunnel);
-        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
+        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, TUNNEL_TEST_COUNT);
         auto ip_record = get_record(dist_ip);
-        add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
+        add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_TEST_COUNT);
         ip_record = get_record(dist_ip);
-        process_record(ip_record, IP_MAX_QUEUE_SIZE);
+        process_record(ip_record, IP_TEST_COUNT);
         if (need_forbid_ip(ip_record)) {
             proxy::shm::uniq().forbid_ip(dist_ip);
             del_ip_all_tunnel_record(dist_ip);
@@ -40,10 +41,10 @@ void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tun
         se.set_first_package_cost(cost);
         se.set_success(true);
         auto tunnel_record = get_record(dist_ip, tunnel);
-        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
+        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, TUNNEL_TEST_COUNT);
         auto ip_record = get_record(dist_ip);
-        add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
-        process_record(ip_record, IP_MAX_QUEUE_SIZE);
+        add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_TEST_COUNT);
+        process_record(ip_record, IP_TEST_COUNT);
         if (!need_forbid_ip(ip_record)) {
             proxy::shm::uniq().recover_ip(dist_ip);
         }
@@ -72,7 +73,7 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
 quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tunnel) {
     auto key = build_key(dist_ip, tunnel);
     quality_record record = get_record(key);
-    process_record(record, IP_TUNNEL_MAX_QUEUE_SIZE);
+    process_record(record, TUNNEL_TEST_COUNT);
     return record;
 }
 
@@ -80,7 +81,7 @@ quality_record quality_analyzer::get_record(uint32_t dist_ip) {
     auto key = build_key(dist_ip);
     quality_record record = get_record(key);
     record.set_type(st::proxy::proto::IP);
-    process_record(record, IP_MAX_QUEUE_SIZE);
+    process_record(record, IP_TEST_COUNT);
     return record;
 }
 quality_record quality_analyzer::get_record(const string &key) {
@@ -151,7 +152,7 @@ bool quality_analyzer::is_tunnel_valid(const st::proxy::proto::quality_record &r
     return record.first_package_failed() < 3 || record.first_package_success() > 0;
 }
 bool quality_analyzer::has_enough_data(const quality_record &record) {
-    return record.first_package_failed() + record.first_package_success() == IP_TUNNEL_MAX_QUEUE_SIZE;
+    return record.first_package_failed() + record.first_package_success() == TUNNEL_TEST_COUNT;
 }
 void quality_analyzer::add_session_record(const string &key, quality_record &record,
                                           const st::proxy::proto::session_record &s_record, uint32_t max_size) {
@@ -169,7 +170,7 @@ void quality_analyzer::execute(std::function<void()> func) {
     }
 }
 bool quality_analyzer::need_forbid_ip(const quality_record &record) {
-    return record.first_package_failed() == IP_MAX_QUEUE_SIZE;
+    return record.first_package_failed() == IP_TEST_COUNT;
 }
 unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_all_tunnel_record(uint32_t dist_ip) {
     unordered_map<string, st::proxy::proto::quality_record> result;

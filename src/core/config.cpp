@@ -3,7 +3,7 @@
 //
 
 #include "config.h"
-
+#include "quality_analyzer.h"
 using namespace st::proxy;
 using namespace st::utils;
 void config::load(const string &configPathInput) {
@@ -41,7 +41,7 @@ void config::load(const string &configPathInput) {
             }
         }
         logger::init(tree);
-
+        quality_analyzer::IP_TEST_COUNT = tunnels.size() * quality_analyzer::TUNNEL_TEST_COUNT;
     } else {
         logger::INFO << "st-proxy config file not exit!" << configPath << END;
         exit(1);
