@@ -49,6 +49,15 @@ void proxy_server::config_console() {
                     return make_pair(true, str);
                 }
             }
+        } else if (command == "proxy blacklist") {
+            string str;
+            vector<std::string> ips = st::proxy::shm::uniq().forbid_ip_list();
+            for (const auto &ip : ips) {
+                auto domains = st::dns::shm::share().reverse_resolve_all(ipv4::str_to_ip(ip));
+                str.append(ip).append("\t").append(join(domains, ",")).append("\n");
+            }
+            strutils::trim(str);
+            return make_pair(true, str);
         }
         return result;
     };

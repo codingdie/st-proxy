@@ -1,7 +1,7 @@
 #include "shm_kv.h"
 
-#include <utility>
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <utility>
 using namespace boost::interprocess;
 using namespace std;
 std::string st::kv::shm_kv::NAME = "ST-SHM";
@@ -16,8 +16,7 @@ typedef shm_string shm_map_key_type;
 typedef shm_string shm_map_value_type;
 typedef std::pair<const shm_map_key_type, shm_map_value_type> shm_pair_type;
 typedef boost::interprocess::allocator<shm_pair_type, segment_manager_t> shm_pair_allocator;
-typedef boost::interprocess::map<shm_map_key_type, shm_map_value_type, std::less<shm_map_key_type>,
-                                 shm_pair_allocator>
+typedef boost::interprocess::map<shm_map_key_type, shm_map_value_type, std::less<shm_map_key_type>, shm_pair_allocator>
         shm_map;
 
 st::kv::shm_kv *st::kv::shm_kv::create(const std::string &ns, uint32_t maxSize) {
@@ -49,8 +48,8 @@ void st::kv::shm_kv::check_mutex_status() {
 std::string st::kv::shm_kv::shm_name() { return NAME + "-" + ns; }
 
 
-st::kv::shm_kv::shm_kv(const std::string &ns, uint32_t maxSize) : abstract_kv(ns, maxSize),
-                                                                  interprocess_mutex(open_or_create, (LOCK_NAME + "-" + ns).c_str()) {
+st::kv::shm_kv::shm_kv(const std::string &ns, uint32_t maxSize)
+    : abstract_kv(ns, maxSize), interprocess_mutex(open_or_create, (LOCK_NAME + "-" + ns).c_str()) {
     scoped_lock<named_mutex> lock(interprocess_mutex);
     segment = new managed_shared_memory(open_or_create, shm_name().c_str(), max_size);
     void_allocator alloc_inst(segment->get_segment_manager());
@@ -113,6 +112,15 @@ void st::kv::shm_kv::erase(const std::string &key) {
     shm_map_key_type k(key.c_str(), alloc_inst);
     kv->erase(k);
 }
-void st::kv::shm_kv::put(const std::string &key, const std::string &value, uint32_t expire) {
-    this->put(key, value);
+void st::kv::shm_kv::put(const std::string &key, const std::string &value, uint32_t expire) { this->put(key, value); }
+void st::kv::shm_kv::list(std::function<void(const std::string &key, const std::string &value)> consumer) {
+    if (segment == nullptr) {
+        return;
+    }
+    scoped_lock<named_mutex> lock(interprocess_mutex);
+    void_allocator alloc_inst(segment->get_segment_manager());
+    shm_map *kv = segment->find<shm_map>("KV").first;
+    for (const auto &item : *kv) {
+        consumer(item.first.c_str(), item.second.c_str());
+    }
 }

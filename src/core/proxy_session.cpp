@@ -17,17 +17,17 @@
 proxy_session::proxy_session(io_context &context)
     : read_counter(), write_counter(), client_sock(context), stage(STAGE::CONNECTING), proxy_sock(context) {
     static std::atomic<uint64_t> id_generator(time::now());
-    readProxyBuffer = st::mem::pmalloc(bufferSize).first;
-    readClientBuffer = st::mem::pmalloc(bufferSize).first;
-    writeProxyBuffer = st::mem::pmalloc(bufferSize).first;
-    writeClientBuffer = st::mem::pmalloc(bufferSize).first;
+    readProxyBuffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
+    readClientBuffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
+    writeProxyBuffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
+    writeClientBuffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
     id = id_generator++;
 }
 
 void proxy_session::start() {
     begin = time::now();
     boost::system::error_code error;
-    clientEnd = client_sock.remote_endpoint(error);
+    client_end = client_sock.remote_endpoint(error);
     if (error) {
         logger::ERROR << "get client addr failed!" << error.message() << END;
         shutdown();
@@ -39,10 +39,10 @@ void proxy_session::start() {
         shutdown();
         return;
     }
-    distHost = st::dns::shm::share().reverse_resolve(dist_end.address().to_v4().to_uint());
+    dist_host = st::dns::shm::share().reverse_resolve(dist_end.address().to_v4().to_uint());
     auto realDistPort = st::dns::shm::share().get_real_port(dist_end.address().to_v4().to_uint(), dist_end.port());
     this->dist_end = tcp::endpoint(make_address_v4(this->dist_end.address().to_v4().to_string()), realDistPort.second);
-    this->preferArea = realDistPort.first;
+    this->prefer_area = realDistPort.first;
     this->distArea = st::areaip::manager::uniq().get_area(this->dist_end.address().to_v4().to_uint());
     if (this->distArea == "default") {
         logger::WARN << "ip" << st::utils::ipv4::ip_to_str(this->dist_end.address().to_v4().to_uint())
@@ -74,9 +74,9 @@ void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_ha
             }
         };
         if (tunnel->type == "DIRECT") {
-            directConnect(tunnel, complete);
+            direct_connect(complete);
         } else {
-            proxyConnect(tunnel, complete);
+            proxy_connect(tunnel, complete);
         }
     } else {
         complete_handler(false);
@@ -115,10 +115,10 @@ void proxy_session::select_tunnels() {
         if (inArea) {
             score += 10;
         }
-        if (tunnel->inWhitelist(dist_ip) || tunnel->inWhitelist(distHost)) {
+        if (tunnel->inWhitelist(dist_ip) || tunnel->inWhitelist(dist_host)) {
             score += 100;
         }
-        if (tunnel->area == preferArea) {
+        if (tunnel->area == prefer_area) {
             score += 1000;
         }
         const proxy::proto::quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
@@ -147,8 +147,8 @@ void proxy_session::select_tunnels() {
              return a.second.first > b.second.first;
          });
     logger::DEBUG << idStr() << "select_tunnels";
-    if (!preferArea.empty()) {
-        logger::DEBUG << "prefer" << preferArea;
+    if (!prefer_area.empty()) {
+        logger::DEBUG << "prefer" << prefer_area;
     }
     int i = 0;
     for (auto &it : tunnels) {
@@ -161,8 +161,8 @@ void proxy_session::select_tunnels() {
     }
     logger::DEBUG << END;
 }
-void proxy_session::directConnect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler) {
-    if (!initProxySocks()) {
+void proxy_session::direct_connect(const std::function<void(bool)> &completeHandler) {
+    if (!init_proxy_socks()) {
         completeHandler(false);
         return;
     }
@@ -176,8 +176,8 @@ void proxy_session::directConnect(stream_tunnel *tunnel, const std::function<voi
     });
 }
 
-void proxy_session::proxyConnect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler) {
-    if (!initProxySocks()) {
+void proxy_session::proxy_connect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler) {
+    if (!init_proxy_socks()) {
         completeHandler(false);
         return;
     }
@@ -230,12 +230,12 @@ void proxy_session::proxyConnect(stream_tunnel *tunnel, const std::function<void
         }
     });
 }
-bool proxy_session::initProxySocks() {
+bool proxy_session::init_proxy_socks() {
     // mac use port to split
     boost::system::error_code error;
-    bindLocalPort(clientEnd, error);
+    bindLocalPort(client_end, error);
     if (error) {
-        logger::ERROR << "initProxySocks bindSafePort error!" << error.message() << END;
+        logger::ERROR << "init_proxy_socks bindSafePort error!" << error.message() << END;
         return false;
     }
     boost::system::error_code se;
@@ -292,7 +292,7 @@ void proxy_session::readClient() {
     if (stage.load() != STAGE::CONNECTED) {
         return;
     }
-    readClientMax("readClient", bufferSize, [=](size_t size) {
+    readClientMax("readClient", PROXY_BUFFER_SIZE, [=](size_t size) {
         copy_byte(this->readClientBuffer, this->writeProxyBuffer, size);
         writeProxy(size);
     });
@@ -323,7 +323,8 @@ void proxy_session::readProxy() {
         return;
     }
     proxy_sock.async_read_some(
-            buffer(readProxyBuffer, sizeof(uint8_t) * bufferSize), [=](boost::system::error_code error, size_t size) {
+            buffer(readProxyBuffer, sizeof(uint8_t) * PROXY_BUFFER_SIZE),
+            [=](boost::system::error_code error, size_t size) {
                 logger::traceId = this->id;
                 if (read_counter.total() == 0) {
                     this->first_packet_time = st::utils::time::now() - begin;
@@ -357,8 +358,8 @@ void proxy_session::readProxy(size_t size,
 }
 void proxy_session::processError(const boost::system::error_code &error, const string &TAG) {
     bool isEOF = error.category() == error::misc_category && error == error::misc_errors::eof;
-    bool isCancled = error == error::operation_aborted;
-    if (!isCancled && !isEOF) {
+    bool isCancel = error == error::operation_aborted;
+    if (!isCancel && !isEOF) {
         logger::ERROR << TAG << error.message() << END;
     }
     shutdown();
@@ -446,14 +447,14 @@ void proxy_session::writeClient(const string &tag, size_t writeSize, const std::
 proxy_session::~proxy_session() {
     logger::traceId = id;
     logger::INFO << idStr() << "disconnect" << transmit_log() << END;
-    mem::pfree(readProxyBuffer, bufferSize);
-    mem::pfree(readClientBuffer, bufferSize);
-    mem::pfree(writeProxyBuffer, bufferSize);
-    mem::pfree(writeClientBuffer, bufferSize);
+    mem::pfree(readProxyBuffer, PROXY_BUFFER_SIZE);
+    mem::pfree(readClientBuffer, PROXY_BUFFER_SIZE);
+    mem::pfree(writeProxyBuffer, PROXY_BUFFER_SIZE);
+    mem::pfree(writeClientBuffer, PROXY_BUFFER_SIZE);
 }
 
 string proxy_session::idStr() {
-    return asio::addr_str(clientEnd) + "->" + asio::addr_str(dist_end) +
+    return asio::addr_str(client_end) + "->" + asio::addr_str(dist_end) +
            (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
 }
 
@@ -497,8 +498,8 @@ unordered_map<string, string> proxy_session::dimensions(unordered_map<string, st
             {"tunnelType", connected_tunnel != nullptr ? connected_tunnel->type : ""},
             {"tunnelArea", connected_tunnel != nullptr ? connected_tunnel->area : ""},
             {"tunnelIndex", connected_tunnel != nullptr ? to_string(try_connect_index) : "-1"},
-            {"clientIP", clientEnd.address().to_string()},
-            {"distHost", distHost},
+            {"clientIP", client_end.address().to_string()},
+            {"distHost", dist_host},
             {"distArea", distArea},
             {"distIP", dist_end.address().to_string()},
             {"distEndPort", to_string(dist_end.port())}};

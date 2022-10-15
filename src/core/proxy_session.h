@@ -10,7 +10,7 @@
 class proxy_session {
 public:
     enum STAGE { CONNECTING, CONNECTED, DESTROYING, DESTROYED };
-    static const uint32_t bufferSize = 2048;
+    static const uint32_t PROXY_BUFFER_SIZE = 2048;
     uint64_t id;
     uint16_t port = 0;
     st::utils::counters::interval read_counter;
@@ -50,11 +50,11 @@ private:
     mutex stageLock;
     uint64_t try_connect_index = 0;
     uint64_t begin = 0;
-    string preferArea;
+    string prefer_area;
     string distArea;
     tcp::endpoint dist_end;
-    tcp::endpoint clientEnd;
-    string distHost;
+    tcp::endpoint client_end;
+    string dist_host;
     std::atomic<STAGE> stage;
     tcp::socket proxy_sock;
     void readClientMax(const string &tag, size_t maxSize, const std::function<void(size_t size)> &completeHandler);
@@ -77,9 +77,9 @@ private:
 
     void connect_tunnels(const std::function<void(bool)>&complete_handler);
 
-    void directConnect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler);
+    void direct_connect(const std::function<void(bool)> &completeHandler);
 
-    void proxyConnect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler);
+    void proxy_connect(stream_tunnel *tunnel, const std::function<void(bool)> &completeHandler);
 
     void select_tunnels();
 
@@ -90,7 +90,7 @@ private:
     void processError(const boost::system::error_code &error, const string &TAG);
 
 
-    bool initProxySocks();
+    bool init_proxy_socks();
 
     bool nextStage(proxy_session::STAGE nextStage);
 
