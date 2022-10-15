@@ -29,12 +29,19 @@ proxy_server::proxy_server()
 }
 void proxy_server::config_console() {
     console.desc.add_options()("ip", boost::program_options::value<string>()->default_value("192.168.31.1"),
-                               "ip")("help", "produce help message");
+                               "ip")("domain", boost::program_options::value<string>()->default_value("www.baidu.com"),
+                                     "domain")("help", "produce help message");
     console.impl = [](const vector<string> &commands, const boost::program_options::variables_map &options) {
         auto command = utils::strutils::join(commands, " ");
         std::pair<bool, std::string> result = make_pair(false, "not invalid command");
         if (command == "proxy analyse") {
-            if (options.count("ip")) {
+            if (options.count("domain")) {
+                auto domain = options["domain"].as<string>();
+                if (!domain.empty()) {
+                    string str = quality_analyzer::uniq().analyse_domain(domain);
+                    return make_pair(true, str);
+                }
+            } else if (options.count("ip")) {
                 auto ipStr = options["ip"].as<string>();
                 if (!ipStr.empty()) {
                     auto ip = utils::ipv4::str_to_ip(ipStr);
