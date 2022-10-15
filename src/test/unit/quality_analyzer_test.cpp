@@ -4,23 +4,21 @@
 #include "quality_analyzer.h"
 #include "st.h"
 #include <gtest/gtest.h>
-TEST(unit_tests, test_quality_analyzer_forbid) {
+TEST(proxy_unit_tests, test_quality_analyzer_forbid) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int dist_ip = 3;
     auto old_record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-    quality_analyzer::uniq().record_failed(dist_ip, tunnel);
-    quality_analyzer::uniq().record_failed(dist_ip, tunnel);
-    quality_analyzer::uniq().record_failed(dist_ip, tunnel);
-    quality_analyzer::uniq().record_failed(dist_ip, tunnel);
-    quality_analyzer::uniq().record_failed(dist_ip, tunnel);
-    quality_analyzer::uniq().record_failed(dist_ip, tunnel);
+    for (auto i = 0; i < quality_analyzer::IP_MAX_QUEUE_SIZE + 1; i++) {
+        quality_analyzer::uniq().record_failed(dist_ip, tunnel);
+    }
+
     ASSERT_TRUE(st::proxy::shm::uniq().is_ip_forbid(dist_ip));
     quality_analyzer::uniq().record_first_package_success(dist_ip, tunnel, 30);
     ASSERT_FALSE(st::proxy::shm::uniq().is_ip_forbid(dist_ip));
     delete tunnel;
 }
 
-TEST(unit_tests, test_quality_analyzer) {
+TEST(proxy_unit_tests, test_quality_analyzer) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
     auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel);
@@ -43,7 +41,7 @@ TEST(unit_tests, test_quality_analyzer) {
     delete tunnel;
 }
 
-TEST(unit_tests, test_quality_analyzer_async) {
+TEST(proxy_unit_tests, test_quality_analyzer_async) {
     auto ic = new boost::asio::io_context();
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
@@ -61,7 +59,7 @@ TEST(unit_tests, test_quality_analyzer_async) {
 }
 
 
-TEST(unit_tests, test_quality_analyzer_speed) {
+TEST(proxy_unit_tests, test_quality_analyzer_speed) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
     quality_analyzer::uniq().record_failed(distIp, tunnel);

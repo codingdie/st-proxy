@@ -3,6 +3,7 @@
 //
 
 #include "quality_analyzer.h"
+#include "config.h"
 #include "leveldb/cache.h"
 #include "utils/shm/proxy_shm.h"
 using namespace st::proxy::proto;
@@ -16,21 +17,31 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         session_record se;
         se.set_first_package_cost(0);
         se.set_success(false);
-        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), IP_TUNNEL, se, IP_TUNNEL_MAX_QUEUE_SIZE);
-        add_session_record(quality_analyzer::build_key(dist_ip), IP, se, IP_MAX_QUEUE_SIZE);
-        if (check_ip_forbid(dist_ip)) {
+        auto tunnel_record = get_record(dist_ip, tunnel);
+        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
+        auto ip_record = get_record(dist_ip);
+        add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
+        if (need_forbid_ip(ip_record)) {
             proxy::shm::uniq().forbid_ip(dist_ip);
+            del_ip_all_tunnel_record(dist_ip);
         }
     });
+}
+void quality_analyzer::del_ip_all_tunnel_record(uint32_t dist_ip) {
+    for (const auto &item : proxy::config::INSTANCE.tunnels) {
+        db.erase(build_key(dist_ip, item));
+    }
 }
 void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost) {
     execute([=]() {
         session_record se;
         se.set_first_package_cost(cost);
         se.set_success(true);
-        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), IP_TUNNEL, se, IP_TUNNEL_MAX_QUEUE_SIZE);
-        add_session_record(quality_analyzer::build_key(dist_ip), IP, se, IP_MAX_QUEUE_SIZE);
-        if (!check_ip_forbid(dist_ip)) {
+        auto tunnel_record = get_record(dist_ip, tunnel);
+        add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
+        auto ip_record = get_record(dist_ip);
+        add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
+        if (!need_forbid_ip(ip_record)) {
             proxy::shm::uniq().recover_ip(dist_ip);
         }
     });
@@ -43,12 +54,11 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
         record.clear_records();
         record.clear_queue_size();
     }
-    uint32_t queue_size = record.queue_size();
+    auto queue_size = record.queue_size();
     if (record.records_size() < max_size) {
         new_record = record.add_records();
     } else {
-        auto back_pos = queue_size % max_size;
-        new_record = record.mutable_records(back_pos);
+        new_record = record.mutable_records(queue_size % max_size);
     }
     new_record->set_success(s_record.success());
     new_record->set_first_package_cost(s_record.first_package_cost());
@@ -67,14 +77,14 @@ quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tun
 quality_record quality_analyzer::get_record(uint32_t dist_ip) {
     auto key = build_key(dist_ip);
     quality_record record = get_record(key);
+    record.set_type(st::proxy::proto::IP);
     process_record(record, IP_MAX_QUEUE_SIZE, st::proxy::shm::IP_FORBID_TIME);
     return record;
 }
 quality_record quality_analyzer::get_record(const string &key) {
     quality_record record;
-    string data;
-    leveldb::Status s = db->Get(leveldb::ReadOptions(), key, &data);
-    if (s.ok()) {
+    string data = db.get(key);
+    if (!data.empty()) {
         record.ParseFromString(data);
     }
     return record;
@@ -105,16 +115,28 @@ void quality_analyzer::process_record(quality_record &record, uint32_t max_size,
 }
 
 
-quality_analyzer::~quality_analyzer() {
-    delete db;
-    delete options.block_cache;
-}
-quality_analyzer::quality_analyzer() {
-    options.create_if_missing = true;
-    st::utils::file::mkdirs("/var/lib/st/proxy");
-    leveldb::Status status = leveldb::DB::Open(options, "/var/lib/st/proxy/quality", &db);
-    options.block_cache = leveldb::NewLRUCache(1024 * 1024 * 1);
-    assert(status.ok());
+quality_analyzer::~quality_analyzer() = default;
+quality_analyzer::quality_analyzer() : db("st-proxy-quality", 2 * 1024 * 1204) {
+    uint32_t ip_count = 0;
+    uint32_t ip_tunnel_count = 0;
+    db.list([&](const std::string &key, const std::string &value) {
+        quality_record record;
+        if (!value.empty()) {
+            record.ParseFromString(value);
+        }
+        if (record.type() == IP) {
+            ip_count++;
+            if (quality_analyzer::need_forbid_ip(record)) {
+                proxy::shm::uniq().forbid_ip(ipv4::str_to_ip(key));
+            } else {
+                proxy::shm::uniq().recover_ip(ipv4::str_to_ip(key));
+            }
+        } else {
+            ip_tunnel_count++;
+        }
+        return record;
+    });
+    logger::INFO << "quality analyser has" << ip_count << "ip and " << ip_tunnel_count << "record";
 }
 string quality_analyzer::build_key(uint32_t dist_ip, stream_tunnel *tunnel) {
     return st::utils::ipv4::ip_to_str(dist_ip) + "/" + tunnel->id();
@@ -122,24 +144,21 @@ string quality_analyzer::build_key(uint32_t dist_ip, stream_tunnel *tunnel) {
 string quality_analyzer::build_key(uint32_t dist_ip) { return st::utils::ipv4::ip_to_str(dist_ip); }
 
 void quality_analyzer::clear() {}
-void quality_analyzer::set_io_context(io_context *ic) { this->ic = ic; }
+void quality_analyzer::set_io_context(io_context *context) { this->ic = context; }
 bool quality_analyzer::is_valid(const st::proxy::proto::quality_record &record) {
     return record.first_package_failed() < 3 || record.first_package_success() > 0;
 }
 bool quality_analyzer::is_enough(const quality_record &record) {
     return record.first_package_failed() + record.first_package_success() == IP_TUNNEL_MAX_QUEUE_SIZE;
 }
-void quality_analyzer::add_session_record(const string &key, st::proxy::proto::record_type record_type,
+void quality_analyzer::add_session_record(const string &key, quality_record &record,
                                           const st::proxy::proto::session_record &s_record, uint32_t max_size) {
-    std::string data;
-    leveldb::Status s = db->Get(leveldb::ReadOptions(), key, &data);
-    quality_record record;
-    if (s.ok()) {
-        record.ParseFromString(data);
-    }
     add_session_record(record, s_record, max_size);
-    record.set_type(record_type);
-    db->Put(leveldb::WriteOptions(), key, record.SerializeAsString());
+    record.clear_first_package_cost();
+    record.clear_first_package_failed();
+    record.clear_first_package_success();
+    db.put(key, record.SerializeAsString());
+    process_record(record, IP_MAX_QUEUE_SIZE, st::proxy::shm::IP_FORBID_TIME);
 }
 void quality_analyzer::execute(std::function<void()> func) {
     if (ic != nullptr) {
@@ -148,7 +167,6 @@ void quality_analyzer::execute(std::function<void()> func) {
         func();
     }
 }
-bool quality_analyzer::check_ip_forbid(uint32_t dist_ip) {
-    quality_record record = get_record(dist_ip);
+bool quality_analyzer::need_forbid_ip(const quality_record &record) {
     return record.first_package_failed() == IP_MAX_QUEUE_SIZE;
 }
