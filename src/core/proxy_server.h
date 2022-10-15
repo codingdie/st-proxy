@@ -33,6 +33,7 @@ private:
     ip::tcp::acceptor *connection_acceptor;
     vector<io_context::work *> workers;
     session_manager *manager;
+    st::console::udp_console console;
     void accept(io_context *context);
 
     bool init();
@@ -40,6 +41,8 @@ private:
     static bool intercept_nat_traffic(bool intercept);
 
     static bool add_nat_whitelist();
+
+    void config_console();
 };
 
 

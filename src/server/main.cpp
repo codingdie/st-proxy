@@ -9,7 +9,7 @@ static const vector<string> availablePaths({"../confs", "/usr/local/etc/st/proxy
 static const string pidFile = "/var/run/st-proxy.pid";
 
 void startServer(const string &confPath) {
-    st::proxy::config::INSTANCE.load(confPath);
+    st::proxy::config::uniq().load(confPath);
     proxy_server server;
     server.start();
 }

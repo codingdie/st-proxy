@@ -10,20 +10,44 @@
 #include <boost/process.hpp>
 #include <boost/thread.hpp>
 using namespace std;
-
-proxy_server::proxy_server() : state(0), manager(nullptr) {
+using namespace st::proxy;
+proxy_server::proxy_server()
+    : state(0), manager(nullptr), console(config::uniq().console_ip, config::uniq().console_port) {
     try {
-        connection_acceptor = new ip::tcp::acceptor(
-                boss_ctx, tcp::endpoint(boost::asio::ip::make_address_v4(st::proxy::config::INSTANCE.ip),
-                                        st::proxy::config::INSTANCE.port));
+        connection_acceptor =
+                new ip::tcp::acceptor(boss_ctx, tcp::endpoint(boost::asio::ip::make_address_v4(config::uniq().ip),
+                                                              st::proxy::config::uniq().port));
         boost::asio::ip::tcp::acceptor::keep_alive option(true);
         connection_acceptor->set_option(option);
+
     } catch (const boost::system::system_error &e) {
-        logger::ERROR << "bind address error" << st::proxy::config::INSTANCE.ip << st::proxy::config::INSTANCE.port
+        logger::ERROR << "bind address error" << st::proxy::config::uniq().ip << st::proxy::config::uniq().port
                       << e.what() << END;
         exit(1);
     }
+    config_console();
 }
+void proxy_server::config_console() {
+    console.desc.add_options()("ip", boost::program_options::value<string>()->default_value("192.168.31.1"),
+                               "ip")("help", "produce help message");
+    console.impl = [](const vector<string> &commands, const boost::program_options::variables_map &options) {
+        auto command = utils::strutils::join(commands, " ");
+        std::pair<bool, std::string> result = make_pair(false, "not invalid command");
+        if (command == "proxy analyse") {
+            if (options.count("ip")) {
+                auto ipStr = options["ip"].as<string>();
+                if (!ipStr.empty()) {
+                    auto ip = utils::ipv4::str_to_ip(ipStr);
+                    string str = quality_analyzer::uniq().analyse_ip(ip);
+                    return make_pair(true, str);
+                }
+            }
+        }
+        return result;
+    };
+    console.start();
+}
+
 
 bool proxy_server::init() {
     srand(time::now());
@@ -38,7 +62,7 @@ bool proxy_server::init() {
 }
 
 bool proxy_server::add_nat_whitelist() {
-    for (auto ip : st::proxy::config::INSTANCE.whitelistIPs) {
+    for (auto ip : st::proxy::config::uniq().whitelistIPs) {
         if (!nat_utils::INSTANCE.addToWhitelist(ip)) {
             return false;
         }
@@ -49,7 +73,7 @@ bool proxy_server::add_nat_whitelist() {
 
 
 bool proxy_server::intercept_nat_traffic(bool intercept) {
-    string command = "sh " + st::proxy::config::INSTANCE.baseConfDir + "/nat/init.sh " + (intercept ? "" : "clean");
+    string command = "sh " + st::proxy::config::uniq().baseConfDir + "/nat/init.sh " + (intercept ? "" : "clean");
     string result;
     string error;
     if (shell::exec(command, result, error)) {
@@ -85,7 +109,7 @@ void proxy_server::start() {
     manager = new session_manager(schedule_ic);
     quality_analyzer::uniq().set_io_context(schedule_ic);
     logger::INFO << "st-proxy start with" << worker_num << "worker, listen at"
-                 << st::proxy::config::INSTANCE.ip + ":" + to_string(st::proxy::config::INSTANCE.port) << END;
+                 << st::proxy::config::uniq().ip + ":" + to_string(st::proxy::config::uniq().port) << END;
     this->state = 1;
     boss_ctx.run();
     for (auto &th : threads) {

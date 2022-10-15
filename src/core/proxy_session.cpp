@@ -108,7 +108,7 @@ void proxy_session::try_connect() {
 void proxy_session::select_tunnels() {
     vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> tunnels;
     uint32_t dist_ip = dist_end.address().to_v4().to_uint();
-    for (auto it = st::proxy::config::INSTANCE.tunnels.begin(); it != st::proxy::config::INSTANCE.tunnels.end(); it++) {
+    for (auto it = st::proxy::config::uniq().tunnels.begin(); it != st::proxy::config::uniq().tunnels.end(); it++) {
         stream_tunnel *tunnel = *it.base();
         int score = 1;
         bool inArea = st::areaip::manager::uniq().is_area_ip(tunnel->proxyAreas, dist_ip);
@@ -122,7 +122,7 @@ void proxy_session::select_tunnels() {
             score += 1000;
         }
         const proxy::proto::quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-        if (!quality_analyzer::is_valid(record)) {
+        if (!quality_analyzer::is_tunnel_valid(record)) {
             score -= 10000;
         }
         tunnels.emplace_back(tunnel, make_pair(score, record));
@@ -134,7 +134,7 @@ void proxy_session::select_tunnels() {
              if (a.second.first == b.second.first) {
                  const proxy::proto::quality_record &record_a = a.second.second;
                  const proxy::proto::quality_record &record_b = b.second.second;
-                 if (quality_analyzer::is_enough(record_a) && quality_analyzer::is_enough(record_b)) {
+                 if (quality_analyzer::has_enough_data(record_a) && quality_analyzer::has_enough_data(record_b)) {
                      if (record_a.first_package_success() != record_b.first_package_success()) {
                          return record_a.first_package_success() > record_b.first_package_success();
                      } else {
@@ -473,7 +473,7 @@ bool proxy_session::nextStage(proxy_session::STAGE nextStage) {
     return result;
 }
 bool proxy_session::is_transmitting() {
-    uint64_t soTimeout = st::proxy::config::INSTANCE.so_timeout;
+    uint64_t soTimeout = st::proxy::config::uniq().so_timeout;
     auto now = time::now();
     bool noWrite = !write_counter.is_start() ? (now - begin >= soTimeout)
                                              : (now - write_counter.get_last_record_time() >= soTimeout);
@@ -483,7 +483,7 @@ bool proxy_session::is_transmitting() {
 }
 
 bool proxy_session::is_connect_timeout() {
-    uint64_t conTimeout = st::proxy::config::INSTANCE.connect_timeout;
+    uint64_t conTimeout = st::proxy::config::uniq().connect_timeout;
     auto now = time::now();
     return stage.load() == proxy_session::STAGE::CONNECTING && (now - begin >= conTimeout);
 }

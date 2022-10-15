@@ -5,8 +5,8 @@
 #ifndef ST_PROXY_CONFIG_H
 #define ST_PROXY_CONFIG_H
 
-#include "stream_tunnel.h"
 #include "st.h"
+#include "stream_tunnel.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/asio.hpp>
 #include <boost/filesystem.hpp>
@@ -26,9 +26,10 @@ namespace st {
     namespace proxy {
         class config {
         public:
-            static config INSTANCE;
             string ip = "127.0.0.1";
             int port = 40000;
+            string console_ip = "127.0.0.1";
+            int console_port = 5858;
             int so_timeout = 60000;
             int connect_timeout = 10000;
             string baseConfDir = "/etc/st/proxy";
@@ -37,7 +38,7 @@ namespace st {
             set<string> whitelist;
             set<uint32_t> whitelistIPs;
             config() = default;
-
+            static config &uniq();
             void load(const string &configPathInput);
             vector<uint32_t> resolve_domain(const string &domain) const;
 

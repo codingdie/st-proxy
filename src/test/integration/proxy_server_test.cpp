@@ -9,7 +9,7 @@ protected:
     proxy_server *proxyServer;
     thread *th;
     void SetUp() override {
-        st::proxy::config::INSTANCE.load("../confs/test");
+        st::proxy::config::uniq().load("../confs/test");
         proxyServer = new proxy_server();
         th = new thread([=]() { proxyServer->start(); });
         proxyServer->wait_start();
