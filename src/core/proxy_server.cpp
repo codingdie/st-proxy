@@ -28,9 +28,7 @@ proxy_server::proxy_server()
     config_console();
 }
 void proxy_server::config_console() {
-    console.desc.add_options()("ip", boost::program_options::value<string>()->default_value("192.168.31.1"),
-                               "ip")("domain", boost::program_options::value<string>()->default_value("www.baidu.com"),
-                                     "domain")("help", "produce help message");
+    console.desc.add_options()("ip", "ip")("domain", "domain")("help", "produce help message");
     console.impl = [](const vector<string> &commands, const boost::program_options::variables_map &options) {
         auto command = utils::strutils::join(commands, " ");
         std::pair<bool, std::string> result = make_pair(false, "not invalid command");
