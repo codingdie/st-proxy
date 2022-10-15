@@ -22,7 +22,7 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         auto ip_record = get_record(dist_ip);
         add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
         ip_record = get_record(dist_ip);
-        process_record(ip_record, IP_MAX_QUEUE_SIZE, RECORD_EXPIRE_TIME);
+        process_record(ip_record, IP_MAX_QUEUE_SIZE);
         if (need_forbid_ip(ip_record)) {
             proxy::shm::uniq().forbid_ip(dist_ip);
             del_ip_all_tunnel_record(dist_ip);
@@ -43,7 +43,7 @@ void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tun
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel), tunnel_record, se, IP_TUNNEL_MAX_QUEUE_SIZE);
         auto ip_record = get_record(dist_ip);
         add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se, IP_MAX_QUEUE_SIZE);
-        process_record(ip_record, IP_MAX_QUEUE_SIZE, RECORD_EXPIRE_TIME);
+        process_record(ip_record, IP_MAX_QUEUE_SIZE);
         if (!need_forbid_ip(ip_record)) {
             proxy::shm::uniq().recover_ip(dist_ip);
         }
@@ -72,7 +72,7 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
 quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tunnel) {
     auto key = build_key(dist_ip, tunnel);
     quality_record record = get_record(key);
-    process_record(record, IP_TUNNEL_MAX_QUEUE_SIZE, RECORD_EXPIRE_TIME);
+    process_record(record, IP_TUNNEL_MAX_QUEUE_SIZE);
     return record;
 }
 
@@ -80,7 +80,7 @@ quality_record quality_analyzer::get_record(uint32_t dist_ip) {
     auto key = build_key(dist_ip);
     quality_record record = get_record(key);
     record.set_type(st::proxy::proto::IP);
-    process_record(record, IP_MAX_QUEUE_SIZE, st::proxy::shm::IP_FORBID_TIME);
+    process_record(record, IP_MAX_QUEUE_SIZE);
     return record;
 }
 quality_record quality_analyzer::get_record(const string &key) {
@@ -91,14 +91,14 @@ quality_record quality_analyzer::get_record(const string &key) {
     }
     return record;
 }
-void quality_analyzer::process_record(quality_record &record, uint32_t max_size, uint32_t expire) {
+void quality_analyzer::process_record(quality_record &record, uint32_t max_size) {
     auto success = 0;
     auto failed = 0;
     uint64_t cost = 0;
     for (auto i = 0; i < record.records_size() && i < max_size; i++) {
         const session_record &s_record = record.records(i);
         auto time_diff = time::now() - s_record.timestamp();
-        if (time_diff > expire) {
+        if (time_diff > RECORD_EXPIRE_TIME) {
             continue;
         }
         if (s_record.success()) {

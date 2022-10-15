@@ -40,7 +40,7 @@ private:
                             const st::proxy::proto::session_record &s_record, uint32_t max_size);
     static void add_session_record(st::proxy::proto::quality_record &record,
                                    const st::proxy::proto::session_record &s_record, uint32_t max_size);
-    static void process_record(st::proxy::proto::quality_record &record, uint32_t max_size, uint32_t expire);
+    static void process_record(quality_record &record, uint32_t max_size);
     proxy::proto::quality_record get_record(const string &key);
     void execute(std::function<void()> func);
     static bool need_forbid_ip(const proxy::proto::quality_record &record);
