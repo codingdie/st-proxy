@@ -27,6 +27,8 @@ public:
     static const uint8_t IP_TUNNEL_MAX_QUEUE_SIZE = 3;
     static const uint8_t IP_MAX_QUEUE_SIZE = 10;
 
+    string analyse_domain(string domain);
+
 private:
     st::kv::disk_kv db;
     io_context *ic = nullptr;

@@ -184,7 +184,7 @@ unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_al
 string quality_analyzer::analyse_ip(uint32_t ip) {
     string str;
     auto ip_record = get_record(ip);
-    str.append("total")
+    str.append(utils::ipv4::ip_to_str(ip))
             .append("\t")
             .append(to_string(ip_record.first_package_success()))
             .append("\t")
@@ -202,6 +202,14 @@ string quality_analyzer::analyse_ip(uint32_t ip) {
                 .append("\t")
                 .append(to_string(record.second.first_package_cost()))
                 .append("\n");
+    }
+    strutils::trim(str);
+    return str;
+}
+string quality_analyzer::analyse_domain(string domain) {
+    string str;
+    for (const auto &ip : st::utils::dns::query(st::proxy::config::uniq().dns, domain)) {
+        str.append(analyse_ip(ip)).append("\n");
     }
     strutils::trim(str);
     return str;
