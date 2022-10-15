@@ -41,7 +41,8 @@ void proxy_server::config_console() {
                     string str = quality_analyzer::uniq().analyse_domain(domain);
                     return make_pair(true, str);
                 }
-            } else if (options.count("ip")) {
+            }
+            if (options.count("ip")) {
                 auto ipStr = options["ip"].as<string>();
                 if (!ipStr.empty()) {
                     auto ip = utils::ipv4::str_to_ip(ipStr);
