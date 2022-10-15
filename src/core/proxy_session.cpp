@@ -144,7 +144,7 @@ void proxy_session::select_tunnels() {
                      }
                  } else {
                      return record_a.first_package_success() + record_a.first_package_failed() <
-                            record_b.first_package_success() + record_b.first_package_failed()
+                            record_b.first_package_success() + record_b.first_package_failed();
                  }
              }
              return a.second.first > b.second.first;
