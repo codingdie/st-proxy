@@ -17,7 +17,7 @@ if (NOT OPENWRT)
             COMMAND protoc -I=${CMAKE_CURRENT_LIST_DIR}/src/core/proto --cpp_out=${CMAKE_CURRENT_LIST_DIR}/src/core/proto message.proto)
     add_custom_target(
             st-common-proto
-            COMMAND rm -f ${CMAKE_CURRENT_LIST_DIR}/src/common/proto/*.h ${CMAKE_CURRENT_LIST_DIR}/src/common/proto/*.cc
+            COMMAND rm -f ${CMAKE_CURRENT_LIST_DIR}/src/common/main/proto/*.h ${CMAKE_CURRENT_LIST_DIR}/src/common/main/proto/*.cc
             COMMAND protoc -I=${CMAKE_CURRENT_LIST_DIR}/src/common/proto --cpp_out=${CMAKE_CURRENT_LIST_DIR}/src/common/proto kv.proto)
 endif ()
 

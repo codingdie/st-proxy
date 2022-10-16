@@ -106,49 +106,7 @@ void proxy_session::try_connect() {
 }
 
 void proxy_session::select_tunnels() {
-    vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> tunnels;
-    uint32_t dist_ip = dist_end.address().to_v4().to_uint();
-    for (auto it = st::proxy::config::uniq().tunnels.begin(); it != st::proxy::config::uniq().tunnels.end(); it++) {
-        stream_tunnel *tunnel = *it.base();
-        int score = 1;
-        bool inArea = st::areaip::manager::uniq().is_area_ip(tunnel->proxyAreas, dist_ip);
-        if (inArea) {
-            score += 10;
-        }
-        if (tunnel->inWhitelist(dist_ip) || tunnel->inWhitelist(dist_host)) {
-            score += 100;
-        }
-        if (tunnel->area == prefer_area) {
-            score += 1000;
-        }
-        const proxy::proto::quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-        if (!quality_analyzer::is_tunnel_valid(record)) {
-            score -= 10000;
-        }
-        tunnels.emplace_back(tunnel, make_pair(score, record));
-    }
-    std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
-    sort(tunnels.begin(), tunnels.end(),
-         [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,
-             const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &b) {
-             if (a.second.first == b.second.first) {
-                 const proxy::proto::quality_record &record_a = a.second.second;
-                 const proxy::proto::quality_record &record_b = b.second.second;
-                 if (quality_analyzer::has_enough_data(record_a) && quality_analyzer::has_enough_data(record_b)) {
-                     if (record_a.first_package_success() != record_b.first_package_success()) {
-                         return record_a.first_package_success() > record_b.first_package_success();
-                     } else {
-                         if (record_a.first_package_cost() != record_b.first_package_cost()) {
-                             return record_a.first_package_cost() < record_b.first_package_cost();
-                         }
-                     }
-                 } else {
-                     return record_a.first_package_success() + record_a.first_package_failed() <
-                            record_b.first_package_success() + record_b.first_package_failed();
-                 }
-             }
-             return a.second.first > b.second.first;
-         });
+    auto tunnels = quality_analyzer::uniq().select_tunnels(dist_end.address().to_v4().to_uint(), prefer_area);
     logger::DEBUG << idStr() << "select_tunnels";
     if (!prefer_area.empty()) {
         logger::DEBUG << "prefer" << prefer_area;

@@ -194,15 +194,21 @@ string quality_analyzer::analyse_ip(uint32_t ip) {
             .append("\t")
             .append(to_string(ip_record.first_package_cost()))
             .append("\n");
-    auto records = get_all_tunnel_record(ip);
-    for (auto &record : records) {
-        str.append(record.first)
+    auto tunnels = select_tunnels(ip, "");
+    int i = 0;
+    for (auto &it : tunnels) {
+        stream_tunnel *tunnel = it.first;
+        const auto &tunnel_record = it.second.second;
+        str.append(to_string(i))
                 .append("\t")
-                .append(to_string(record.second.first_package_success()))
+                .append(tunnel->id())
                 .append("\t")
-                .append(to_string(record.second.first_package_failed()))
+                .append(to_string(it.second.first))
+                .append(to_string(tunnel_record.first_package_success()))
                 .append("\t")
-                .append(to_string(record.second.first_package_cost()))
+                .append(to_string(tunnel_record.first_package_failed()))
+                .append("\t")
+                .append(to_string(tunnel_record.first_package_cost()))
                 .append("\n");
     }
     strutils::trim(str);
@@ -219,4 +225,53 @@ string quality_analyzer::analyse_domain(const string &domain) {
     str = join(strs, "\n\n");
     strutils::trim(str);
     return str;
+}
+vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>>
+quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area) {
+    auto dist_hosts = st::dns::shm::share().reverse_resolve_all(dist_ip);
+    vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> tunnels;
+    for (auto it = st::proxy::config::uniq().tunnels.begin(); it != st::proxy::config::uniq().tunnels.end(); it++) {
+        stream_tunnel *tunnel = *it.base();
+        int score = 1;
+        bool inArea = st::areaip::manager::uniq().is_area_ip(tunnel->proxyAreas, dist_ip);
+        if (inArea) {
+            score += 10;
+        }
+        if (tunnel->in_whitelist(dist_ip) || tunnel->in_whitelist(dist_hosts)) {
+            score += 100;
+        }
+        if (tunnel->area == prefer_area) {
+            score += 1000;
+        }
+        const proxy::proto::quality_record &record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
+        if (!quality_analyzer::is_tunnel_valid(record)) {
+            score -= 10000;
+        }
+        tunnels.emplace_back(tunnel, make_pair(score, record));
+    }
+    std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
+    sort(tunnels.begin(), tunnels.end(),
+         [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,
+             const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &b) {
+             if (a.second.first == b.second.first) {
+                 const proxy::proto::quality_record &record_a = a.second.second;
+                 const proxy::proto::quality_record &record_b = b.second.second;
+                 // 基础策略排序优先级差不多情况下
+                 // 当收集了足够多的数据后，优先成功率高的，其次优先首包耗时低,否则优先使用没用过的tunnel
+                 if (quality_analyzer::has_enough_data(record_a) && quality_analyzer::has_enough_data(record_b)) {
+                     if (record_a.first_package_success() != record_b.first_package_success()) {
+                         return record_a.first_package_success() > record_b.first_package_success();
+                     } else {
+                         if (record_a.first_package_cost() != record_b.first_package_cost()) {
+                             return record_a.first_package_cost() < record_b.first_package_cost();
+                         }
+                     }
+                 } else {
+                     return record_a.first_package_success() + record_a.first_package_failed() <
+                            record_b.first_package_success() + record_b.first_package_failed();
+                 }
+             }
+             return a.second.first > b.second.first;
+         });
+    return tunnels;
 }
