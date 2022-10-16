@@ -34,4 +34,12 @@ bool stream_tunnel::inWhitelist(const string &domain) {
     }
     return false;
 }
-bool stream_tunnel::inWhitelist(const uint32_t ip) { return whitelistIPs.find(ip) != whitelistIPs.end(); }
+bool stream_tunnel::in_whitelist(uint32_t ip) { return whitelistIPs.find(ip) != whitelistIPs.end(); }
+bool stream_tunnel::in_whitelist(const vector<string> &domains) {
+    for (const auto &domain : domains) {
+        if (inWhitelist(domain)) {
+            return true;
+        }
+    }
+    return false;
+}

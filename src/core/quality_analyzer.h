@@ -30,6 +30,8 @@ public:
     static const long RECORD_EXPIRE_TIME = 1000L * 60 * 60 * 24;
 
     string analyse_domain(const string &domain);
+    vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> select_tunnels(uint32_t dist_ip,
+                                                                                          const string &prefer_area);
 
 private:
     st::kv::disk_kv db;
