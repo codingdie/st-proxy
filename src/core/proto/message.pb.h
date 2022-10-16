@@ -72,12 +72,13 @@ namespace proto {
 enum record_type {
   IP_TUNNEL = 0,
   IP = 1,
+  TUNNEL = 2,
   record_type_INT_MIN_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::google::protobuf::int32>::min(),
   record_type_INT_MAX_SENTINEL_DO_NOT_USE_ = std::numeric_limits<::google::protobuf::int32>::max()
 };
 bool record_type_IsValid(int value);
 const record_type record_type_MIN = IP_TUNNEL;
-const record_type record_type_MAX = IP;
+const record_type record_type_MAX = TUNNEL;
 const int record_type_ARRAYSIZE = record_type_MAX + 1;
 
 // ===================================================================
@@ -337,6 +338,12 @@ class quality_record :
   ::st::proxy::proto::record_type type() const;
   void set_type(::st::proxy::proto::record_type value);
 
+  // uint32 queue_limit = 7;
+  void clear_queue_limit();
+  static const int kQueueLimitFieldNumber = 7;
+  ::google::protobuf::uint32 queue_limit() const;
+  void set_queue_limit(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:st.proxy.proto.quality_record)
  private:
   class HasBitSetters;
@@ -348,6 +355,7 @@ class quality_record :
   ::google::protobuf::uint32 first_package_success_;
   ::google::protobuf::uint32 first_package_failed_;
   int type_;
+  ::google::protobuf::uint32 queue_limit_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_message_2eproto;
 };
@@ -506,6 +514,20 @@ inline void quality_record::set_type(::st::proxy::proto::record_type value) {
   
   type_ = value;
   // @@protoc_insertion_point(field_set:st.proxy.proto.quality_record.type)
+}
+
+// uint32 queue_limit = 7;
+inline void quality_record::clear_queue_limit() {
+  queue_limit_ = 0u;
+}
+inline ::google::protobuf::uint32 quality_record::queue_limit() const {
+  // @@protoc_insertion_point(field_get:st.proxy.proto.quality_record.queue_limit)
+  return queue_limit_;
+}
+inline void quality_record::set_queue_limit(::google::protobuf::uint32 value) {
+  
+  queue_limit_ = value;
+  // @@protoc_insertion_point(field_set:st.proxy.proto.quality_record.queue_limit)
 }
 
 #ifdef __GNUC__

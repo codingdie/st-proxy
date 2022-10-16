@@ -35,7 +35,7 @@ TEST_F(IntegrationTests, testCURL) {
     string result;
     st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
                            result);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20 * 1000));
     st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
                            result);
     ASSERT_TRUE(result.length() > 0);

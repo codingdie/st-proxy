@@ -24,7 +24,7 @@ public:
 
     stream_tunnel(const string &type, const string &ip, int port);
 
-    bool inWhitelist(const string &domain);
+    bool in_whitelist(const string &domain);
     bool in_whitelist(const vector<string> &domains);
     bool in_whitelist(uint32_t ip);
 };

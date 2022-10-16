@@ -64,6 +64,7 @@ bool record_type_IsValid(int value) {
   switch (value) {
     case 0:
     case 1:
+    case 2:
       return true;
     default:
       return false;
@@ -388,6 +389,7 @@ const int quality_record::kFirstPackageCostFieldNumber;
 const int quality_record::kFirstPackageSuccessFieldNumber;
 const int quality_record::kFirstPackageFailedFieldNumber;
 const int quality_record::kTypeFieldNumber;
+const int quality_record::kQueueLimitFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 quality_record::quality_record()
@@ -401,8 +403,8 @@ quality_record::quality_record(const quality_record& from)
       records_(from.records_) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
   ::memcpy(&queue_size_, &from.queue_size_,
-    static_cast<size_t>(reinterpret_cast<char*>(&type_) -
-    reinterpret_cast<char*>(&queue_size_)) + sizeof(type_));
+    static_cast<size_t>(reinterpret_cast<char*>(&queue_limit_) -
+    reinterpret_cast<char*>(&queue_size_)) + sizeof(queue_limit_));
   // @@protoc_insertion_point(copy_constructor:st.proxy.proto.quality_record)
 }
 
@@ -410,8 +412,8 @@ void quality_record::SharedCtor() {
   ::google::protobuf::internal::InitSCC(
       &scc_info_quality_record_message_2eproto.base);
   ::memset(&queue_size_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&type_) -
-      reinterpret_cast<char*>(&queue_size_)) + sizeof(type_));
+      reinterpret_cast<char*>(&queue_limit_) -
+      reinterpret_cast<char*>(&queue_size_)) + sizeof(queue_limit_));
 }
 
 quality_record::~quality_record() {
@@ -439,8 +441,8 @@ void quality_record::Clear() {
 
   records_.Clear();
   ::memset(&queue_size_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&type_) -
-      reinterpret_cast<char*>(&queue_size_)) + sizeof(type_));
+      reinterpret_cast<char*>(&queue_limit_) -
+      reinterpret_cast<char*>(&queue_size_)) + sizeof(queue_limit_));
   _internal_metadata_.Clear();
 }
 
@@ -506,6 +508,13 @@ const char* quality_record::_InternalParse(const char* begin, const char* end, v
         if (static_cast<::google::protobuf::uint8>(tag) != 48) goto handle_unusual;
         ::google::protobuf::uint64 val = ::google::protobuf::internal::ReadVarint(&ptr);
         msg->set_type(static_cast<::st::proxy::proto::record_type>(val));
+        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+        break;
+      }
+      // uint32 queue_limit = 7;
+      case 7: {
+        if (static_cast<::google::protobuf::uint8>(tag) != 56) goto handle_unusual;
+        msg->set_queue_limit(::google::protobuf::internal::ReadVarint(&ptr));
         GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
         break;
       }
@@ -622,6 +631,19 @@ bool quality_record::MergePartialFromCodedStream(
         break;
       }
 
+      // uint32 queue_limit = 7;
+      case 7: {
+        if (static_cast< ::google::protobuf::uint8>(tag) == (56 & 0xFF)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
+                 input, &queue_limit_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -684,6 +706,11 @@ void quality_record::SerializeWithCachedSizes(
       6, this->type(), output);
   }
 
+  // uint32 queue_limit = 7;
+  if (this->queue_limit() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt32(7, this->queue_limit(), output);
+  }
+
   output->WriteRaw(_internal_metadata_.unknown_fields().data(),
                    static_cast<int>(_internal_metadata_.unknown_fields().size()));
   // @@protoc_insertion_point(serialize_end:st.proxy.proto.quality_record)
@@ -744,6 +771,13 @@ size_t quality_record::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormatLite::EnumSize(this->type());
   }
 
+  // uint32 queue_limit = 7;
+  if (this->queue_limit() != 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::UInt32Size(
+        this->queue_limit());
+  }
+
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
   SetCachedSize(cached_size);
   return total_size;
@@ -777,6 +811,9 @@ void quality_record::MergeFrom(const quality_record& from) {
   if (from.type() != 0) {
     set_type(from.type());
   }
+  if (from.queue_limit() != 0) {
+    set_queue_limit(from.queue_limit());
+  }
 }
 
 void quality_record::CopyFrom(const quality_record& from) {
@@ -803,6 +840,7 @@ void quality_record::InternalSwap(quality_record* other) {
   swap(first_package_success_, other->first_package_success_);
   swap(first_package_failed_, other->first_package_failed_);
   swap(type_, other->type_);
+  swap(queue_limit_, other->queue_limit_);
 }
 
 ::std::string quality_record::GetTypeName() const {

@@ -27,7 +27,6 @@ public:
 
 private:
     std::atomic<uint8_t> state;
-    io_context boss_ctx;
     vector<io_context *> worker_ctxs;
     thread_pool pool;
     ip::tcp::acceptor *default_acceptor;

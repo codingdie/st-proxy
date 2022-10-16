@@ -14,7 +14,6 @@ namespace st {
 
         class shm {
         private:
-            kv::shm_kv *ip_blacklist = kv::shm_kv::create("ST-PROXY-IP-BLACKLIST", 1 * 1024 * 1024);
 
         public:
             void forbid_ip(uint32_t ip);
