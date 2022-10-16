@@ -14,8 +14,8 @@
 #include <map>
 #include <vector>
 
-proxy_session::proxy_session(io_context &context)
-    : read_counter(), write_counter(), client_sock(context), stage(STAGE::CONNECTING), proxy_sock(context) {
+proxy_session::proxy_session(io_context &context, const string &tag)
+    : read_counter(), write_counter(), client_sock(context), stage(STAGE::CONNECTING), proxy_sock(context), tag(tag) {
     static std::atomic<uint64_t> id_generator(time::now());
     readProxyBuffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
     readClientBuffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
@@ -95,8 +95,10 @@ void proxy_session::try_connect() {
             readClient();
             readProxy();
         } else {
-            for (auto i = 0; i <= try_connect_index && i < selected_tunnels.size(); i++) {
-                quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), selected_tunnels[i]);
+            if (!is_net_test()) {
+                for (auto i = 0; i <= try_connect_index && i < selected_tunnels.size(); i++) {
+                    quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), selected_tunnels[i]);
+                }
             }
             shutdown();
         }
@@ -106,7 +108,8 @@ void proxy_session::try_connect() {
 }
 
 void proxy_session::select_tunnels() {
-    auto tunnels = quality_analyzer::uniq().select_tunnels(dist_end.address().to_v4().to_uint(), prefer_area);
+    auto tunnels =
+            quality_analyzer::uniq().select_tunnels(dist_end.address().to_v4().to_uint(), prefer_area, dist_end.port());
     logger::DEBUG << idStr() << "select_tunnels";
     if (!prefer_area.empty()) {
         logger::DEBUG << "prefer" << prefer_area;
@@ -205,31 +208,13 @@ bool proxy_session::init_proxy_socks() {
     proxy_sock.set_option(keepAlive, se);
     proxy_sock.set_option(noDelay, se);
 #ifdef linux
-    setMark(1024);
+    nat_utils::set_mark(1024, proxy_sock);
 #endif
     return true;
 }
 
 #ifdef linux
 
-void proxy_session::setMark(uint32_t mark) {
-    int fd = proxy_sock.native_handle();
-    int error = setsockopt(fd, SOL_SOCKET, SO_MARK, &mark, sizeof(mark));
-    if (error == -1) {
-        logger::ERROR << "set mark error" << strerror(errno) << logger::ENDL;
-    }
-}
-
-
-uint32_t proxy_session::getMark(int fd) {
-    uint32_t mark = 0;
-    socklen_t len = sizeof(mark);
-    int error = getsockopt(fd, SOL_SOCKET, SO_MARK, &mark, &len);
-    if (error != -1) {
-        return mark;
-    }
-    return -1;
-}
 
 #endif
 
@@ -292,11 +277,15 @@ void proxy_session::readProxy() {
                     apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
                                      this->first_packet_time);
                     if (error) {
-                        quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
+                        if (!is_net_test()) {
+                            quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(),
+                                                                   connected_tunnel);
+                        }
                         logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
                     } else {
-                        quality_analyzer::uniq().record_first_package_success(
-                                dist_end.address().to_v4().to_uint(), connected_tunnel, this->first_packet_time);
+                        quality_analyzer::uniq().record_first_package_success(dist_end.address().to_v4().to_uint(),
+                                                                              connected_tunnel, this->first_packet_time,
+                                                                              is_net_test());
                     }
                 }
 
@@ -467,3 +456,4 @@ unordered_map<string, string> proxy_session::dimensions(unordered_map<string, st
     result.insert(dimensions.begin(), dimensions.end());
     return result;
 }
+bool proxy_session::is_net_test() { return "net_test" == tag; }

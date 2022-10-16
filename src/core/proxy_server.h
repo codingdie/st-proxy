@@ -30,11 +30,12 @@ private:
     io_context boss_ctx;
     vector<io_context *> worker_ctxs;
     thread_pool pool;
-    ip::tcp::acceptor *connection_acceptor;
+    ip::tcp::acceptor *default_acceptor;
+    ip::tcp::acceptor *net_test_acceptor;
     vector<io_context::work *> workers;
     session_manager *manager;
     st::console::udp_console console;
-    void accept(io_context *context);
+    void accept(io_context *context, tcp::acceptor *acceptor, const string &tag);
 
     bool init();
 

@@ -116,4 +116,24 @@ bool nat_utils::addToIPSet(string name, uint32_t ip) {
 }
 
 
+void nat_utils::set_mark(uint32_t mark, tcp::socket &socket) {
+    int fd = socket.native_handle();
+    int error = setsockopt(fd, SOL_SOCKET, SO_MARK, &mark, sizeof(mark));
+    if (error == -1) {
+        logger::ERROR << "set mark error" << strerror(errno) << logger::ENDL;
+    }
+}
+
+
+uint32_t nat_utils::get_mark(int fd) {
+    uint32_t mark = 0;
+    socklen_t len = sizeof(mark);
+    int error = getsockopt(fd, SOL_SOCKET, SO_MARK, &mark, &len);
+    if (error != -1) {
+        return mark;
+    }
+    return -1;
+}
+
+
 nat_utils nat_utils::INSTANCE;

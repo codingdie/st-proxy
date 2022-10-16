@@ -18,8 +18,8 @@ public:
     stream_tunnel *connected_tunnel = nullptr;
     tcp::socket client_sock;
     uint64_t first_packet_time = 0;
-
-    explicit proxy_session(io_context &context);
+    string tag;
+    explicit proxy_session(io_context &context, const string &tag);
 
     virtual ~proxy_session();
 
@@ -57,6 +57,7 @@ private:
     string dist_host;
     std::atomic<STAGE> stage;
     tcp::socket proxy_sock;
+    bool is_net_test();
     void readClientMax(const string &tag, size_t maxSize, const std::function<void(size_t size)> &completeHandler);
 
     void readClient();
@@ -75,7 +76,7 @@ private:
 
     void writeProxy(size_t size, const std::function<void(boost::system::error_code error)> &completeHandler);
 
-    void connect_tunnels(const std::function<void(bool)>&complete_handler);
+    void connect_tunnels(const std::function<void(bool)> &complete_handler);
 
     void direct_connect(const std::function<void(bool)> &completeHandler);
 
@@ -93,14 +94,6 @@ private:
     bool init_proxy_socks();
 
     bool nextStage(proxy_session::STAGE nextStage);
-
-
-#ifdef linux
-
-    void setMark(uint32_t mark);
-    uint32_t getMark(int fd);
-
-#endif
 };
 
 #endif// ST_PROXY_PROXY_SESSION_H

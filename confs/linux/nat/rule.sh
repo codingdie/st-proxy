@@ -15,18 +15,19 @@ if [ "$1" != "clean" ]; then
 
   # Anything else should be redirected to st-proxy's local port
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j RETURN
+  iptables -t nat -A st-proxy -p tcp  -m mark --mark 1025 -j REDIRECT --to-ports 40001
   iptables -t nat -A st-proxy -p tcp -j REDIRECT --to-ports 40000
 
   # Apply the rules
   iptables -t nat -A OUTPUT -p tcp -j st-proxy
   iptables -t nat -A PREROUTING -p tcp -j st-proxy
-  iptables -t nat -L -n
+  iptables -t nat -L
   ipset list st-proxy-whitelist
 else
   iptables -t nat -F st-proxy
   iptables -t nat -D OUTPUT -p tcp -j st-proxy
   iptables -t nat -D PREROUTING -p tcp -j st-proxy
-  iptables -t nat -L -n
+  iptables -t nat -L
   ipset flush -! st-proxy-whitelist
   ipset create -! st-proxy-whitelist hash:net
 fi
