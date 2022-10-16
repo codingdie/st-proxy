@@ -14,12 +14,12 @@ using namespace st::proxy;
 proxy_server::proxy_server()
     : state(0), manager(nullptr), console(config::uniq().console_ip, config::uniq().console_port) {
     try {
-        connection_acceptor =
+        default_acceptor =
                 new ip::tcp::acceptor(boss_ctx, tcp::endpoint(boost::asio::ip::make_address_v4(config::uniq().ip),
                                                               st::proxy::config::uniq().port));
-        boost::asio::ip::tcp::acceptor::keep_alive option(true);
-        connection_acceptor->set_option(option);
-
+        net_test_acceptor =
+                new ip::tcp::acceptor(boss_ctx, tcp::endpoint(boost::asio::ip::make_address_v4(config::uniq().ip),
+                                                              st::proxy::config::uniq().port + 1));
     } catch (const boost::system::system_error &e) {
         logger::ERROR << "bind address error" << st::proxy::config::uniq().ip << st::proxy::config::uniq().port
                       << e.what() << END;
@@ -116,7 +116,8 @@ void proxy_server::start() {
     for (auto i = 0; i < worker_num - 1; i++) {
         threads.emplace_back([=]() {
             auto ic = worker_ctxs.at(i);
-            this->accept(ic);
+            this->accept(ic, default_acceptor, "default");
+            this->accept(ic, net_test_acceptor, "net_test");
             ic->run();
         });
     }
@@ -154,15 +155,15 @@ void proxy_server::wait_start() {
     }
     cout << state << endl;
 }
-void proxy_server::accept(io_context *context) {
-    auto *session = new proxy_session(*context);
-    connection_acceptor->async_accept(session->client_sock, [=](const boost::system::error_code &error) {
-        if (!connection_acceptor->is_open() || state == 2) {
+void proxy_server::accept(io_context *context, tcp::acceptor *acceptor, const string &tag) {
+    auto *session = new proxy_session(*context, tag);
+    acceptor->async_accept(session->client_sock, [=](const boost::system::error_code &error) {
+        if (!acceptor->is_open() || state == 2) {
             return;
         }
         if (!error) {
             manager->add(session);
         }
-        this->accept(context);
+        this->accept(context, default_acceptor, "default");
     });
 }

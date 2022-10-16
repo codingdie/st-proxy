@@ -42,11 +42,16 @@ public:
 
     bool addToIPSet(string name, string domain);
 
+    static void set_mark(uint32_t mark, tcp::socket &socket);
+
+    static uint32_t get_mark(int fd);
+
 private:
 #ifdef __APPLE__
     int pffd = -1;
 
-    tcp::endpoint getDstAddrForMac(__uint32_t clientIp, __uint16_t clientPort, __uint32_t serverIp, __uint16_t serverPort);
+    tcp::endpoint getDstAddrForMac(__uint32_t clientIp, __uint16_t clientPort, __uint32_t serverIp,
+                                   __uint16_t serverPort);
 
 #endif
 };

@@ -10,6 +10,7 @@ protected:
     thread *th;
     void SetUp() override {
         st::proxy::config::uniq().load("../confs/test");
+        st::utils::shell::exec("rm -rf /var/lib/st/kv/st-proxy-quality");
         proxyServer = new proxy_server();
         th = new thread([=]() { proxyServer->start(); });
         proxyServer->wait_start();
@@ -34,6 +35,7 @@ TEST_F(IntegrationTests, testCURL) {
     string result;
     st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
                            result);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
     st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
                            result);
     ASSERT_TRUE(result.length() > 0);

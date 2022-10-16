@@ -21,7 +21,7 @@
   },
   "so_timeout": 10000,
   "parallel": 16,
-  "dns": "127.0.0.1",
+  "dns": "192.168.31.1",
   "whitelist": [
     "baidu.com",
     "www.baidu.com"

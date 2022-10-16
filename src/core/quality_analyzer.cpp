@@ -5,6 +5,7 @@
 #include "quality_analyzer.h"
 #include "config.h"
 #include "leveldb/cache.h"
+#include "net_test_manager.h"
 #include "utils/shm/proxy_shm.h"
 using namespace st::proxy::proto;
 uint8_t quality_analyzer::IP_TEST_COUNT = 10;
@@ -35,7 +36,8 @@ void quality_analyzer::del_ip_all_tunnel_record(uint32_t dist_ip) {
         db.erase(build_key(dist_ip, item));
     }
 }
-void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost) {
+void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost,
+                                                    bool is_net_test) {
     execute([=]() {
         session_record se;
         se.set_first_package_cost(cost);
@@ -151,8 +153,9 @@ void quality_analyzer::set_io_context(io_context *context) { this->ic = context;
 bool quality_analyzer::is_tunnel_valid(const st::proxy::proto::quality_record &record) {
     return record.first_package_failed() < 3 || record.first_package_success() > 0;
 }
-bool quality_analyzer::has_enough_data(const quality_record &record) {
-    return record.first_package_failed() + record.first_package_success() == TUNNEL_TEST_COUNT;
+uint8_t quality_analyzer::need_more_test(const quality_record &record) {
+    return min(TUNNEL_TEST_COUNT,
+               (uint8_t)(TUNNEL_TEST_COUNT - (record.first_package_failed() + record.first_package_success())));
 }
 void quality_analyzer::add_session_record(const string &key, quality_record &record,
                                           const st::proxy::proto::session_record &s_record, uint32_t max_size) {
@@ -194,22 +197,24 @@ string quality_analyzer::analyse_ip(uint32_t ip) {
             .append("\t")
             .append(to_string(ip_record.first_package_cost()))
             .append("\n");
-    auto tunnels = select_tunnels(ip, "");
+    auto tunnels = select_tunnels(ip, "", 443);
     int i = 0;
     for (auto &it : tunnels) {
         stream_tunnel *tunnel = it.first;
         const auto &tunnel_record = it.second.second;
-        str.append(to_string(i))
+        str.append(to_string(i++))
                 .append("\t")
                 .append(tunnel->id())
                 .append("\t")
                 .append(to_string(it.second.first))
+                .append("\t")
                 .append(to_string(tunnel_record.first_package_success()))
                 .append("\t")
                 .append(to_string(tunnel_record.first_package_failed()))
                 .append("\t")
                 .append(to_string(tunnel_record.first_package_cost()))
                 .append("\n");
+        i++;
     }
     strutils::trim(str);
     return str;
@@ -227,9 +232,11 @@ string quality_analyzer::analyse_domain(const string &domain) {
     return str;
 }
 vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>>
-quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area) {
+quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area, uint16_t port) {
     auto dist_hosts = st::dns::shm::share().reverse_resolve_all(dist_ip);
     vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> tunnels;
+    int need_test_count = 0;
+    int max_score = -10000;
     for (auto it = st::proxy::config::uniq().tunnels.begin(); it != st::proxy::config::uniq().tunnels.end(); it++) {
         stream_tunnel *tunnel = *it.base();
         int score = 1;
@@ -247,6 +254,7 @@ quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area) {
         if (!quality_analyzer::is_tunnel_valid(record)) {
             score -= 10000;
         }
+        max_score = max(score, max_score);
         tunnels.emplace_back(tunnel, make_pair(score, record));
     }
     std::shuffle(tunnels.begin(), tunnels.end(), std::default_random_engine(time::now()));
@@ -258,7 +266,10 @@ quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area) {
                  const proxy::proto::quality_record &record_b = b.second.second;
                  // 基础策略排序优先级差不多情况下
                  // 当收集了足够多的数据后，优先成功率高的，其次优先首包耗时低,否则优先使用没用过的tunnel
-                 if (quality_analyzer::has_enough_data(record_a) && quality_analyzer::has_enough_data(record_b)) {
+                 if (need_more_test(record_a) || need_more_test(record_b)) {
+                     return record_a.first_package_success() + record_a.first_package_failed() <
+                            record_b.first_package_success() + record_b.first_package_failed();
+                 } else {
                      if (record_a.first_package_success() != record_b.first_package_success()) {
                          return record_a.first_package_success() > record_b.first_package_success();
                      } else {
@@ -266,12 +277,19 @@ quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area) {
                              return record_a.first_package_cost() < record_b.first_package_cost();
                          }
                      }
-                 } else {
-                     return record_a.first_package_success() + record_a.first_package_failed() <
-                            record_b.first_package_success() + record_b.first_package_failed();
                  }
              }
              return a.second.first > b.second.first;
          });
+    for (const auto &item : tunnels) {
+        if (item.second.first == max_score) {
+            need_test_count += need_more_test(item.second.second);
+        }
+    }
+    apm_logger::perf("st-proxy-quality-record-enough",
+                     {{"distIP", ipv4::ip_to_str(dist_ip)}, {"enough", need_test_count ? "1" : "0"}}, 0);
+    if (need_test_count > 0) {
+        net_test_manager::uniq().test(dist_ip, port, need_test_count);
+    }
     return tunnels;
 }

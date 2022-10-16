@@ -8,30 +8,29 @@
 #include "proto/message.pb.h"
 #include "stream_tunnel.h"
 #include <boost/asio.hpp>
+static const uint8_t TUNNEL_TEST_COUNT = 3;
 class quality_analyzer {
 public:
     quality_analyzer();
     static quality_analyzer &uniq();
     void record_failed(uint32_t dist_ip, stream_tunnel *tunnel);
-    void record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost);
+    void record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost, bool is_net_test);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip, stream_tunnel *tunnel);
     unordered_map<string, st::proxy::proto::quality_record> get_all_tunnel_record(uint32_t dist_ip);
     st::proxy::proto::quality_record get_record(uint32_t dist_ip);
 
     static bool is_tunnel_valid(const st::proxy::proto::quality_record &record);
-    static bool has_enough_data(const st::proxy::proto::quality_record &record);
     string analyse_ip(uint32_t ip);
 
     void clear();
     virtual ~quality_analyzer();
     void set_io_context(io_context *context);
-    static const uint8_t TUNNEL_TEST_COUNT = 3;
     static uint8_t IP_TEST_COUNT;
     static const long RECORD_EXPIRE_TIME = 1000L * 60 * 60 * 24;
 
     string analyse_domain(const string &domain);
-    vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>> select_tunnels(uint32_t dist_ip,
-                                                                                          const string &prefer_area);
+    vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>>
+    select_tunnels(uint32_t dist_ip, const string &prefer_area, uint16_t port);
 
 private:
     st::kv::disk_kv db;
@@ -47,6 +46,7 @@ private:
     void execute(std::function<void()> func);
     static bool need_forbid_ip(const proxy::proto::quality_record &record);
     void del_ip_all_tunnel_record(uint32_t dist_ip);
+    static uint8_t need_more_test(const st::proxy::proto::quality_record &record);
 };
 
 
