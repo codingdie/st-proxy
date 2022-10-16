@@ -37,6 +37,7 @@ public:
     bool addToWhitelist(uint32_t ips);
 
     bool addTestDomain(string domain);
+    bool addTestIP(uint32_t ip);
 
     bool addToIPSet(string name, uint32_t ips);
 

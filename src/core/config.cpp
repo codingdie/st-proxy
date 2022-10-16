@@ -41,7 +41,6 @@ void config::load(const string &configPathInput) {
             }
         }
         logger::init(tree);
-        quality_analyzer::IP_TEST_COUNT = tunnels.size() * TUNNEL_TEST_COUNT;
     } else {
         logger::INFO << "st-proxy config file not exit!" << configPath << END;
         exit(1);
@@ -115,6 +114,10 @@ stream_tunnel *config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
             streamTunnel->whitelist.emplace(domain);
         }
         streamTunnel->whitelistIPs = parse_whitelist_to_ips(streamTunnel->whitelist);
+        if (!streamTunnel->whitelist.empty()) {
+            logger::INFO << streamTunnel->id() << "parse whitelist" << join(streamTunnel->whitelist, ",")
+                         << st::utils::ipv4::ips_to_str(streamTunnel->whitelistIPs) << END;
+        }
     }
     return streamTunnel;
 }
@@ -126,7 +129,6 @@ vector<uint32_t> config::resolve_domain(const string &domain) const {
             ips = results;
         }
     }
-    logger::INFO << "resolve domain" << domain << st::utils::ipv4::ips_to_str(ips) << END;
     return ips;
 }
 config &config::uniq() {

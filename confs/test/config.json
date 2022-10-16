@@ -1,6 +1,18 @@
 {
   "ip": "127.0.0.1",
   "port": "40000",
+  "log": {
+    "level": 0,
+    "raw_log_server": {
+      "ip": "192.168.31.20",
+      "port": 30500,
+      "tag": "st-proxy"
+    },
+    "apm_log_server": {
+      "ip": "192.168.31.20",
+      "port": 30501
+    }
+  },
   "tunnels": [
     {
       "type": "DIRECT",
@@ -9,7 +21,7 @@
     {
       "type": "SOCKS",
       "ip": "192.168.31.20",
-      "port": 1090,
+      "port": 1070,
       "area": "US",
       "whitelist": [
         "*.google.com"

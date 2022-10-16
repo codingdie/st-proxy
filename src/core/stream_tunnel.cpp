@@ -15,7 +15,7 @@ string stream_tunnel::id() {
     }
 }
 
-bool stream_tunnel::inWhitelist(const string &domain) {
+bool stream_tunnel::in_whitelist(const string &domain) {
     if (whitelist.find(domain) != whitelist.end()) {
         return true;
     }
@@ -37,7 +37,7 @@ bool stream_tunnel::inWhitelist(const string &domain) {
 bool stream_tunnel::in_whitelist(uint32_t ip) { return whitelistIPs.find(ip) != whitelistIPs.end(); }
 bool stream_tunnel::in_whitelist(const vector<string> &domains) {
     for (const auto &domain : domains) {
-        if (inWhitelist(domain)) {
+        if (in_whitelist(domain)) {
             return true;
         }
     }

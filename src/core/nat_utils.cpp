@@ -89,6 +89,7 @@ nat_utils::nat_utils() {
 bool nat_utils::addToWhitelist(uint32_t ip) { return addToIPSet("st-proxy-whitelist", ip); }
 
 bool nat_utils::addTestDomain(string domain) { return addToIPSet("st-proxy-test", domain); }
+bool nat_utils::addTestIP(uint32_t ip) { return addToIPSet("st-proxy-test", ip); }
 
 bool nat_utils::addToIPSet(string name, string domain) {
     bool result = true;

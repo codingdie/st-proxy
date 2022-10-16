@@ -9,6 +9,7 @@ message session_record {
 enum record_type{
   IP_TUNNEL = 0;
   IP = 1;
+  TUNNEL = 2;
 }
 message quality_record {
   repeated session_record  records = 1;
@@ -17,5 +18,6 @@ message quality_record {
   uint32 first_package_success = 4;
   uint32 first_package_failed = 5;
   record_type type = 6;
+  uint32 queue_limit = 7;
 }
 

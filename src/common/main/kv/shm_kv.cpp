@@ -1,6 +1,7 @@
 #include "shm_kv.h"
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include "utils/logger.h"
+#include "utils/moment.h"
 #include <utility>
 using namespace boost::interprocess;
 using namespace std;
@@ -18,7 +19,7 @@ typedef std::pair<const shm_map_key_type, shm_map_value_type> shm_pair_type;
 typedef boost::interprocess::allocator<shm_pair_type, segment_manager_t> shm_pair_allocator;
 typedef boost::interprocess::map<shm_map_key_type, shm_map_value_type, std::less<shm_map_key_type>, shm_pair_allocator>
         shm_map;
-
+using namespace st::utils;
 st::kv::shm_kv *st::kv::shm_kv::create(const std::string &ns, uint32_t maxSize) {
     if (INSTANCES.find(ns) != INSTANCES.end()) {
         return INSTANCES.at(ns);
@@ -61,6 +62,7 @@ std::string st::kv::shm_kv::get(const std::string &key) {
     if (key.empty() || segment == nullptr) {
         return "";
     }
+    auto begin = time::now();
     scoped_lock<named_mutex> lock(interprocess_mutex);
     void_allocator alloc_inst(segment->get_segment_manager());
     shm_map *kv = segment->find<shm_map>("KV").first;
@@ -69,12 +71,14 @@ std::string st::kv::shm_kv::get(const std::string &key) {
     if (it != kv->end()) {
         return it->second.c_str();
     }
+    //    apm_logger::perf("st-shm-kv-get", {{"namespace", this->ns}}, time::now() - begin);
     return "";
 }
 void st::kv::shm_kv::put(const std::string &key, const std::string &value) {
     if (key.empty() || value.empty() || segment == nullptr) {
         return;
     }
+    auto begin = time::now();
     scoped_lock<named_mutex> lock(interprocess_mutex);
     void_allocator alloc_inst(segment->get_segment_manager());
     shm_map *kv = segment->find<shm_map>("KV").first;
@@ -87,6 +91,7 @@ void st::kv::shm_kv::put(const std::string &key, const std::string &value) {
         shm_pair_type shm_pair(shm_key, shm_val);
         kv->insert(shm_pair);
     }
+    //    apm_logger::perf("st-shm-kv-get", {{"namespace", this->ns}}, time::now() - begin);
 }
 void st::kv::shm_kv::put_if_absent(const std::string &key, const std::string &value) {
     if (key.empty() || value.empty() || segment == nullptr) {
