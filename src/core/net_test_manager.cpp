@@ -21,27 +21,30 @@ void net_test_manager::schedule_dispatch_test() {
             apm_logger::perf("st-proxy-net-test-stats", {{}}, {{"heap", test_queue.size()}});
             test_case t_case = poll_one_test();
             if (t_case.ip != 0) {
-                auto result = quality_analyzer::uniq().select_tunnels(t_case.ip, "");
+                running_test++;
+                auto result = quality_analyzer::uniq().select_tunnels(t_case.ip, {}, "");
                 auto need_test_count = quality_analyzer::uniq().cal_need_test_count(result);
                 if (need_test_count > 0) {
                     logger::DEBUG << "net test begin" << t_case.key() << "count" << need_test_count << END;
                     test_re(t_case, need_test_count, 0, [=](uint32_t valid) {
                         test_queue.erase(t_case.key());
+                        running_test--;
                         logger::DEBUG << "net test end" << t_case.key() << "valid" << valid << END;
                     });
                 } else {
                     test_queue.erase(t_case.key());
+                    running_test--;
                     logger::WARN << "net test ignored" << t_case.key() << END;
                 }
             }
         }
     });
-    schedule_timer.expires_from_now(boost::posix_time::milliseconds(50));
+    schedule_timer.expires_from_now(boost::posix_time::milliseconds(100));
     schedule_timer.async_wait([this](error_code ec) { schedule_dispatch_test(); });
 }
 test_case net_test_manager::poll_one_test() {
     test_case t_case(0, 0);
-    if (test_queue.empty()) {
+    if (test_queue.empty() || running_test == test_queue.size() || running_test >= TEST_CONCURENT) {
         return t_case;
     }
     t_case.timestamp = time::now();

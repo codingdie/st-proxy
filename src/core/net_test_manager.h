@@ -51,6 +51,8 @@ private:
     byte test_request[TEST_REQUEST_LEN]{};
     io_context ic;
     volatile double key_count = 0;
+    volatile uint16_t running_test = 0;
+
     io_context::work *iw = nullptr;
     boost::asio::deadline_timer schedule_timer;
     boost::asio::deadline_timer generate_key_timer;

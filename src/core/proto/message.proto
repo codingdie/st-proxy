@@ -5,6 +5,7 @@ message session_record {
   bool success = 1;
   uint32 first_package_cost = 2;
   uint64 timestamp = 3;
+  uint32 ip = 4;
 }
 enum record_type{
   IP_TUNNEL = 0;
