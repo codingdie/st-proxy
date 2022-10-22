@@ -22,7 +22,7 @@ namespace st {
     namespace utils {
         class udp_log_server {
         public:
-            string ip = "";
+            string ip;
             uint16_t port = 0;
             bool is_valid() const;
         };
@@ -40,7 +40,7 @@ namespace st {
         };
         class std_logger {
         public:
-            string tag = "";
+            string tag;
             static std_logger INSTANCE;
             std_logger();
             static void log(const string &str, ostream *st);
@@ -116,7 +116,6 @@ namespace st {
         private:
             static unordered_map<string, unordered_map<string, unordered_map<string, unordered_map<string, long>>>>
                     STATISTICS;
-            static std::mutex APM_STATISTICS_MUTEX;
             static udp_log_server UDP_LOG_SERVER;
             static boost::asio::deadline_timer LOG_TIMER;
             static boost::asio::io_context IO_CONTEXT;

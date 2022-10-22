@@ -162,7 +162,6 @@ void std_logger::log(const string &str, ostream *st) { *st << str; }
 
 udp_log_server apm_logger::UDP_LOG_SERVER;
 unordered_map<string, unordered_map<string, unordered_map<string, unordered_map<string, long>>>> apm_logger::STATISTICS;
-std::mutex apm_logger::APM_STATISTICS_MUTEX;
 boost::asio::io_context apm_logger::IO_CONTEXT;
 boost::asio::io_context::work *apm_logger::IO_CONTEXT_WORK = nullptr;
 boost::asio::deadline_timer apm_logger::LOG_TIMER(apm_logger::IO_CONTEXT);
@@ -176,17 +175,18 @@ void apm_logger::start() {
 }
 
 void apm_logger::end() {
-    uint64_t cost = time::now() - this->start_time;
-    this->add_metric("cost", cost);
-    this->add_metric("count", 1);
-    string name = dimensions.get<string>("name");
-    string dimensionsId = base64::encode(to_json(dimensions));
-    for (auto it = metrics.begin(); it != metrics.end(); it++) {
-        string metricName = it->first;
-        long value = boost::lexical_cast<long>(it->second.data());
-        std::lock_guard<std::mutex> lg(APM_STATISTICS_MUTEX);
-        accumulate_metric(STATISTICS[name][dimensionsId][metricName], value);
-    }
+    IO_CONTEXT.post([=]() {
+        uint64_t cost = time::now() - this->start_time;
+        this->add_metric("cost", cost);
+        this->add_metric("count", 1);
+        string name = dimensions.get<string>("name");
+        string dimensionsId = base64::encode(to_json(dimensions));
+        for (auto it = metrics.begin(); it != metrics.end(); it++) {
+            string metricName = it->first;
+            long value = boost::lexical_cast<long>(it->second.data());
+            accumulate_metric(STATISTICS[name][dimensionsId][metricName], value);
+        }
+    });
 }
 
 
@@ -211,30 +211,32 @@ void apm_logger::perf(const string &name, unordered_map<string, string> &&dimens
     perf(name, std::move(dimensions), cost, 1);
 }
 void apm_logger::perf(const string &name, unordered_map<string, string> &&dimensions, uint64_t cost, uint64_t count) {
-    boost::property_tree::ptree pt;
-    for (auto &dimension : dimensions) {
-        pt.put(dimension.first, dimension.second);
-    }
-    pt.put("name", name);
-    string id = base64::encode(to_json(pt));
-    std::lock_guard<std::mutex> lg(APM_STATISTICS_MUTEX);
-    accumulate_metric(STATISTICS[name][id]["count"], count);
-    accumulate_metric(STATISTICS[name][id]["cost"], cost);
+    IO_CONTEXT.post([=]() {
+        boost::property_tree::ptree pt;
+        for (auto &dimension : dimensions) {
+            pt.put(dimension.first, dimension.second);
+        }
+        pt.put("name", name);
+        string id = base64::encode(to_json(pt));
+        accumulate_metric(STATISTICS[name][id]["count"], count);
+        accumulate_metric(STATISTICS[name][id]["cost"], cost);
+    });
 }
 
 void apm_logger::perf(const string &name, unordered_map<string, string> &&dimensions,
                       unordered_map<string, int64_t> &&counts) {
-    boost::property_tree::ptree pt;
-    for (auto &dimension : dimensions) {
-        pt.put(dimension.first, dimension.second);
-    }
-    pt.put("name", name);
-    string id = base64::encode(to_json(pt));
-    std::lock_guard<std::mutex> lg(APM_STATISTICS_MUTEX);
-    accumulate_metric(STATISTICS[name][id]["count"], 1);
-    for (const auto &count : counts) {
-        accumulate_metric(STATISTICS[name][id][count.first], count.second);
-    }
+    IO_CONTEXT.post([=]() {
+        boost::property_tree::ptree pt;
+        for (auto &dimension : dimensions) {
+            pt.put(dimension.first, dimension.second);
+        }
+        pt.put("name", name);
+        string id = base64::encode(to_json(pt));
+        accumulate_metric(STATISTICS[name][id]["count"], 1);
+        for (const auto &count : counts) {
+            accumulate_metric(STATISTICS[name][id][count.first], count.second);
+        }
+    });
 }
 
 void apm_logger::enable(const string &udpServerIP, uint16_t udpServerPort) {
@@ -254,7 +256,6 @@ void apm_logger::disable() {
 void apm_logger::schedule_log() {
     LOG_TIMER.expires_from_now(boost::posix_time::milliseconds(65 * 1000 - time::now() % (60 * 1000U)));
     LOG_TIMER.async_wait([=](boost::system::error_code ec) {
-        std::lock_guard<std::mutex> lg(APM_STATISTICS_MUTEX);
         for (auto &it0 : STATISTICS) {
             for (auto &it1 : it0.second) {
                 boost::property_tree::ptree finalPT;
