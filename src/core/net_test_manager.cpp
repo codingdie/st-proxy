@@ -21,7 +21,8 @@ void net_test_manager::schedule_dispatch_test() {
             apm_logger::perf("st-proxy-net-test-stats", {{}}, {{"heap", test_queue.size()}});
             test_case t_case = poll_one_test();
             if (t_case.ip != 0) {
-                auto result = quality_analyzer::uniq().select_tunnels(t_case.ip, "");
+                running_test++;
+                auto result = quality_analyzer::uniq().select_tunnels(t_case.ip, {}, "");
                 auto need_test_count = quality_analyzer::uniq().cal_need_test_count(result);
                 if (need_test_count > 0) {
                     logger::DEBUG << "net test begin" << t_case.key() << "count" << need_test_count << END;
@@ -58,7 +59,6 @@ test_case net_test_manager::poll_one_test() {
         if (tests[i].second.status == 0) {
             string key = tests[i].first;
             test_queue.at(key).status = 1;
-            running_test++;
             return test_queue.at(key);
         }
     }

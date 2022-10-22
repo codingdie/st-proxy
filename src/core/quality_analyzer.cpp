@@ -194,7 +194,7 @@ unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_al
 }
 string quality_analyzer::analyse_ip_tunnels(uint32_t ip) {
     string str;
-    auto tunnels = select_tunnels(ip, "");
+    auto tunnels = select_tunnels(ip, {}, "");
     int i = 0;
     for (auto &it : tunnels) {
         stream_tunnel *tunnel = it.first;
