@@ -34,7 +34,7 @@ namespace st {
             int connect_timeout = 10000;
             string baseConfDir = "/etc/st/proxy";
             vector<stream_tunnel *> tunnels;
-            string dns = "";
+            string dns;
             set<string> whitelist;
             set<uint32_t> whitelistIPs;
             config() = default;

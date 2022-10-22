@@ -27,21 +27,23 @@ void net_test_manager::schedule_dispatch_test() {
                     logger::DEBUG << "net test begin" << t_case.key() << "count" << need_test_count << END;
                     test_re(t_case, need_test_count, 0, [=](uint32_t valid) {
                         test_queue.erase(t_case.key());
+                        running_test--;
                         logger::DEBUG << "net test end" << t_case.key() << "valid" << valid << END;
                     });
                 } else {
                     test_queue.erase(t_case.key());
+                    running_test--;
                     logger::WARN << "net test ignored" << t_case.key() << END;
                 }
             }
         }
     });
-    schedule_timer.expires_from_now(boost::posix_time::milliseconds(50));
+    schedule_timer.expires_from_now(boost::posix_time::milliseconds(100));
     schedule_timer.async_wait([this](error_code ec) { schedule_dispatch_test(); });
 }
 test_case net_test_manager::poll_one_test() {
     test_case t_case(0, 0);
-    if (test_queue.empty()) {
+    if (test_queue.empty() || running_test == test_queue.size() || running_test >= TEST_CONCURENT) {
         return t_case;
     }
     t_case.timestamp = time::now();
@@ -56,6 +58,7 @@ test_case net_test_manager::poll_one_test() {
         if (tests[i].second.status == 0) {
             string key = tests[i].first;
             test_queue.at(key).status = 1;
+            running_test++;
             return test_queue.at(key);
         }
     }

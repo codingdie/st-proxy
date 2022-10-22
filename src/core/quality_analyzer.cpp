@@ -232,9 +232,9 @@ string quality_analyzer::analyse_ip(uint32_t ip) {
     strutils::trim(str);
     return str;
 }
-select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const string &prefer_area) {
+select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const vector<string> &dist_hosts,
+                                                       const string &prefer_area) {
     auto begin = time::now();
-    auto dist_hosts = vector<string>();
     select_tunnels_tesult tunnels;
     for (auto it = st::proxy::config::uniq().tunnels.begin(); it != st::proxy::config::uniq().tunnels.end(); it++) {
         stream_tunnel *tunnel = *it.base();

@@ -39,7 +39,7 @@ public:
     string analyse_ip(uint32_t ip);
     string analyse_ip_tunnels(uint32_t ip);
 
-    select_tunnels_tesult select_tunnels(uint32_t dist_ip, const string &prefer_area);
+    select_tunnels_tesult select_tunnels(uint32_t dist_ip, const vector<string> &dist_hosts, const string &prefer_area);
 
     uint16_t cal_need_test_count(const select_tunnels_tesult &tunnels);
 
