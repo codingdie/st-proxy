@@ -65,6 +65,7 @@ private:
     void del_ip_all_tunnel_record(uint32_t dist_ip);
     bool check_all_failed(const proxy::proto::quality_record &record);
     static uint8_t need_more_test(const st::proxy::proto::quality_record &record);
+    bool has_record_ip_failed(uint32_t dist_ip, const proxy::proto::quality_record &tunnel_record) const;
 };
 
 

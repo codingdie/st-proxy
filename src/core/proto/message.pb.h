@@ -192,14 +192,21 @@ class session_record :
   ::google::protobuf::uint64 timestamp() const;
   void set_timestamp(::google::protobuf::uint64 value);
 
+  // uint32 ip = 4;
+  void clear_ip();
+  static const int kIpFieldNumber = 4;
+  ::google::protobuf::uint32 ip() const;
+  void set_ip(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:st.proxy.proto.session_record)
- private:
+  private:
   class HasBitSetters;
 
   ::google::protobuf::internal::InternalMetadataWithArenaLite _internal_metadata_;
   bool success_;
   ::google::protobuf::uint32 first_package_cost_;
   ::google::protobuf::uint64 timestamp_;
+  ::google::protobuf::uint32 ip_;
   mutable ::google::protobuf::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_message_2eproto;
 };
@@ -403,13 +410,25 @@ inline void session_record::clear_timestamp() {
   timestamp_ = PROTOBUF_ULONGLONG(0);
 }
 inline ::google::protobuf::uint64 session_record::timestamp() const {
-  // @@protoc_insertion_point(field_get:st.proxy.proto.session_record.timestamp)
-  return timestamp_;
+    // @@protoc_insertion_point(field_get:st.proxy.proto.session_record.timestamp)
+    return timestamp_;
 }
 inline void session_record::set_timestamp(::google::protobuf::uint64 value) {
-  
-  timestamp_ = value;
-  // @@protoc_insertion_point(field_set:st.proxy.proto.session_record.timestamp)
+
+    timestamp_ = value;
+    // @@protoc_insertion_point(field_set:st.proxy.proto.session_record.timestamp)
+}
+
+// uint32 ip = 4;
+inline void session_record::clear_ip() { ip_ = 0u; }
+inline ::google::protobuf::uint32 session_record::ip() const {
+    // @@protoc_insertion_point(field_get:st.proxy.proto.session_record.ip)
+    return ip_;
+}
+inline void session_record::set_ip(::google::protobuf::uint32 value) {
+
+    ip_ = value;
+    // @@protoc_insertion_point(field_set:st.proxy.proto.session_record.ip)
 }
 
 // -------------------------------------------------------------------
@@ -417,11 +436,8 @@ inline void session_record::set_timestamp(::google::protobuf::uint64 value) {
 // quality_record
 
 // repeated .st.proxy.proto.session_record records = 1;
-inline int quality_record::records_size() const {
-  return records_.size();
-}
-inline void quality_record::clear_records() {
-  records_.Clear();
+inline int quality_record::records_size() const { return records_.size(); }
+inline void quality_record::clear_records() { records_.Clear();
 }
 inline ::st::proxy::proto::session_record* quality_record::mutable_records(int index) {
   // @@protoc_insertion_point(field_mutable:st.proxy.proto.quality_record.records)

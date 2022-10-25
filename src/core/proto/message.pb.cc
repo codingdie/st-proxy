@@ -84,6 +84,7 @@ class session_record::HasBitSetters {
 const int session_record::kSuccessFieldNumber;
 const int session_record::kFirstPackageCostFieldNumber;
 const int session_record::kTimestampFieldNumber;
+const int session_record::kIpFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 session_record::session_record()
@@ -94,17 +95,15 @@ session_record::session_record()
 session_record::session_record(const session_record& from)
   : ::google::protobuf::MessageLite(),
       _internal_metadata_(nullptr) {
-  _internal_metadata_.MergeFrom(from._internal_metadata_);
-  ::memcpy(&success_, &from.success_,
-    static_cast<size_t>(reinterpret_cast<char*>(&timestamp_) -
-    reinterpret_cast<char*>(&success_)) + sizeof(timestamp_));
-  // @@protoc_insertion_point(copy_constructor:st.proxy.proto.session_record)
+    _internal_metadata_.MergeFrom(from._internal_metadata_);
+    ::memcpy(&success_, &from.success_,
+             static_cast<size_t>(reinterpret_cast<char *>(&ip_) - reinterpret_cast<char *>(&success_)) + sizeof(ip_));
+    // @@protoc_insertion_point(copy_constructor:st.proxy.proto.session_record)
 }
 
 void session_record::SharedCtor() {
-  ::memset(&success_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&timestamp_) -
-      reinterpret_cast<char*>(&success_)) + sizeof(timestamp_));
+    ::memset(&success_, 0,
+             static_cast<size_t>(reinterpret_cast<char *>(&ip_) - reinterpret_cast<char *>(&success_)) + sizeof(ip_));
 }
 
 session_record::~session_record() {
@@ -130,61 +129,70 @@ void session_record::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  ::memset(&success_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&timestamp_) -
-      reinterpret_cast<char*>(&success_)) + sizeof(timestamp_));
+  ::memset(&success_, 0,
+           static_cast<size_t>(reinterpret_cast<char *>(&ip_) - reinterpret_cast<char *>(&success_)) + sizeof(ip_));
   _internal_metadata_.Clear();
 }
 
 #if GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
-const char* session_record::_InternalParse(const char* begin, const char* end, void* object,
-                  ::google::protobuf::internal::ParseContext* ctx) {
-  auto msg = static_cast<session_record*>(object);
-  ::google::protobuf::int32 size; (void)size;
-  int depth; (void)depth;
-  ::google::protobuf::uint32 tag;
-  ::google::protobuf::internal::ParseFunc parser_till_end; (void)parser_till_end;
-  auto ptr = begin;
-  while (ptr < end) {
-    ptr = ::google::protobuf::io::Parse32(ptr, &tag);
-    GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-    switch (tag >> 3) {
-      // bool success = 1;
-      case 1: {
-        if (static_cast<::google::protobuf::uint8>(tag) != 8) goto handle_unusual;
-        msg->set_success(::google::protobuf::internal::ReadVarint(&ptr));
+const char *session_record::_InternalParse(const char *begin, const char *end, void *object,
+                                           ::google::protobuf::internal::ParseContext *ctx) {
+    auto msg = static_cast<session_record *>(object);
+    ::google::protobuf::int32 size;
+    (void) size;
+    int depth;
+    (void) depth;
+    ::google::protobuf::uint32 tag;
+    ::google::protobuf::internal::ParseFunc parser_till_end;
+    (void) parser_till_end;
+    auto ptr = begin;
+    while (ptr < end) {
+        ptr = ::google::protobuf::io::Parse32(ptr, &tag);
         GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-        break;
-      }
-      // uint32 first_package_cost = 2;
-      case 2: {
-        if (static_cast<::google::protobuf::uint8>(tag) != 16) goto handle_unusual;
-        msg->set_first_package_cost(::google::protobuf::internal::ReadVarint(&ptr));
-        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-        break;
-      }
-      // uint64 timestamp = 3;
-      case 3: {
-        if (static_cast<::google::protobuf::uint8>(tag) != 24) goto handle_unusual;
-        msg->set_timestamp(::google::protobuf::internal::ReadVarint(&ptr));
-        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
-        break;
-      }
-      default: {
-      handle_unusual:
-        if ((tag & 7) == 4 || tag == 0) {
-          ctx->EndGroup(tag);
-          return ptr;
-        }
-        auto res = UnknownFieldParse(tag, {_InternalParse, msg},
-          ptr, end, msg->_internal_metadata_.mutable_unknown_fields(), ctx);
-        ptr = res.first;
-        GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
-        if (res.second) return ptr;
-      }
-    }  // switch
-  }  // while
-  return ptr;
+        switch (tag >> 3) {
+            // bool success = 1;
+            case 1: {
+                if (static_cast<::google::protobuf::uint8>(tag) != 8) goto handle_unusual;
+                msg->set_success(::google::protobuf::internal::ReadVarint(&ptr));
+                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+                break;
+            }
+            // uint32 first_package_cost = 2;
+            case 2: {
+                if (static_cast<::google::protobuf::uint8>(tag) != 16) goto handle_unusual;
+                msg->set_first_package_cost(::google::protobuf::internal::ReadVarint(&ptr));
+                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+                break;
+            }
+            // uint64 timestamp = 3;
+            case 3: {
+                if (static_cast<::google::protobuf::uint8>(tag) != 24) goto handle_unusual;
+                msg->set_timestamp(::google::protobuf::internal::ReadVarint(&ptr));
+                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+                break;
+            }
+            // uint32 ip = 4;
+            case 4: {
+                if (static_cast<::google::protobuf::uint8>(tag) != 32) goto handle_unusual;
+                msg->set_ip(::google::protobuf::internal::ReadVarint(&ptr));
+                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr);
+                break;
+            }
+            default: {
+            handle_unusual:
+                if ((tag & 7) == 4 || tag == 0) {
+                    ctx->EndGroup(tag);
+                    return ptr;
+                }
+                auto res = UnknownFieldParse(tag, {_InternalParse, msg}, ptr, end,
+                                             msg->_internal_metadata_.mutable_unknown_fields(), ctx);
+                ptr = res.first;
+                GOOGLE_PROTOBUF_PARSER_ASSERT(ptr != nullptr);
+                if (res.second) return ptr;
+            }
+        }// switch
+    }    // while
+    return ptr;
 }
 #else  // GOOGLE_PROTOBUF_ENABLE_EXPERIMENTAL_PARSER
 bool session_record::MergePartialFromCodedStream(
@@ -233,23 +241,35 @@ bool session_record::MergePartialFromCodedStream(
       case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) == (24 & 0xFF)) {
 
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
-                 input, &timestamp_)));
-        } else {
-          goto handle_unusual;
-        }
-        break;
+              DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                      ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                      input, &timestamp_)));
+          } else {
+              goto handle_unusual;
+          }
+          break;
+      }
+
+      // uint32 ip = 4;
+      case 4: {
+          if (static_cast<::google::protobuf::uint8>(tag) == (32 & 0xFF)) {
+
+              DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                      ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(input,
+                                                                                                             &ip_)));
+          } else {
+              goto handle_unusual;
+          }
+          break;
       }
 
       default: {
       handle_unusual:
-        if (tag == 0) {
-          goto success;
-        }
-        DO_(::google::protobuf::internal::WireFormatLite::SkipField(
-            input, tag, &unknown_fields_stream));
-        break;
+          if (tag == 0) {
+              goto success;
+          }
+          DO_(::google::protobuf::internal::WireFormatLite::SkipField(input, tag, &unknown_fields_stream));
+          break;
       }
     }
   }
@@ -276,12 +296,17 @@ void session_record::SerializeWithCachedSizes(
 
   // uint32 first_package_cost = 2;
   if (this->first_package_cost() != 0) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->first_package_cost(), output);
+      ::google::protobuf::internal::WireFormatLite::WriteUInt32(2, this->first_package_cost(), output);
   }
 
   // uint64 timestamp = 3;
   if (this->timestamp() != 0) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(3, this->timestamp(), output);
+      ::google::protobuf::internal::WireFormatLite::WriteUInt64(3, this->timestamp(), output);
+  }
+
+  // uint32 ip = 4;
+  if (this->ip() != 0) {
+      ::google::protobuf::internal::WireFormatLite::WriteUInt32(4, this->ip(), output);
   }
 
   output->WriteRaw(_internal_metadata_.unknown_fields().data(),
@@ -307,15 +332,17 @@ size_t session_record::ByteSizeLong() const {
   // uint32 first_package_cost = 2;
   if (this->first_package_cost() != 0) {
     total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::UInt32Size(
-        this->first_package_cost());
+      ::google::protobuf::internal::WireFormatLite::UInt32Size(this->first_package_cost());
   }
 
   // uint64 timestamp = 3;
   if (this->timestamp() != 0) {
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::UInt64Size(
-        this->timestamp());
+      total_size += 1 + ::google::protobuf::internal::WireFormatLite::UInt64Size(this->timestamp());
+  }
+
+  // uint32 ip = 4;
+  if (this->ip() != 0) {
+      total_size += 1 + ::google::protobuf::internal::WireFormatLite::UInt32Size(this->ip());
   }
 
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
@@ -336,13 +363,16 @@ void session_record::MergeFrom(const session_record& from) {
   (void) cached_has_bits;
 
   if (from.success() != 0) {
-    set_success(from.success());
+      set_success(from.success());
   }
   if (from.first_package_cost() != 0) {
-    set_first_package_cost(from.first_package_cost());
+      set_first_package_cost(from.first_package_cost());
   }
   if (from.timestamp() != 0) {
-    set_timestamp(from.timestamp());
+      set_timestamp(from.timestamp());
+  }
+  if (from.ip() != 0) {
+      set_ip(from.ip());
   }
 }
 
@@ -367,6 +397,7 @@ void session_record::InternalSwap(session_record* other) {
   swap(success_, other->success_);
   swap(first_package_cost_, other->first_package_cost_);
   swap(timestamp_, other->timestamp_);
+  swap(ip_, other->ip_);
 }
 
 ::std::string session_record::GetTypeName() const {
