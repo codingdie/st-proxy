@@ -83,6 +83,7 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
         new_record = record.mutable_records(queue_size % record.queue_limit());
     }
     new_record->set_success(s_record.success());
+    new_record->set_ip(s_record.ip());
     new_record->set_first_package_cost(s_record.first_package_cost());
     new_record->set_timestamp(time::now());
     record.set_queue_size((queue_size + 1));
