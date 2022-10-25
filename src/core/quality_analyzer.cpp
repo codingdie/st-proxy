@@ -325,6 +325,12 @@ string quality_analyzer::analyse_tunnel() {
     unordered_map<string, st::proxy::proto::quality_record> result;
     for (const auto &tunnel : proxy::config::uniq().tunnels) {
         auto record = get_record(tunnel);
+        vector<string> failed_ips;
+        for (const auto &item : record.records()) {
+            if (!item.success()) {
+                failed_ips.emplace_back(ipv4::ip_to_str(item.ip()));
+            }
+        }
         str.append(tunnel->id())
                 .append("\t")
                 .append(tunnel->area)
@@ -334,6 +340,8 @@ string quality_analyzer::analyse_tunnel() {
                 .append(to_string(record.first_package_failed()))
                 .append("\t")
                 .append(to_string(record.first_package_cost()))
+                .append("\t")
+                .append(join(failed_ips, ","))
                 .append("\n");
     }
     strutils::trim(str);
