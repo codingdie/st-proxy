@@ -47,7 +47,7 @@ private:
     static const int TEST_REQUEST_LEN = 1024;
     static const int TEST_TIME_OUT = 3000;
     static const int TEST_QPS = 3;
-    static const int TEST_CONCURENT = 5;
+    static const int TEST_CONCURENT = 3;
     byte test_request[TEST_REQUEST_LEN]{};
     io_context ic;
     volatile double key_count = 0;
@@ -58,7 +58,6 @@ private:
     boost::asio::deadline_timer generate_key_timer;
     std::unordered_map<string, test_case> test_queue;
     thread th;
-    mutex mt;
     void do_test(uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
 
     void test_re(const test_case &tc, uint16_t count, uint32_t valid_count,

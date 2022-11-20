@@ -30,7 +30,7 @@ bool session_manager::destroy(uint64_t sid) {
 uint16_t session_manager::guess_unused_port() { return random_range(random_engine); }
 
 void session_manager::schedule_monitor() {
-    session_timer.expires_from_now(boost::posix_time::seconds(3));
+    session_timer.expires_from_now(boost::posix_time::seconds(10));
     session_timer.async_wait([&](boost::system::error_code ec) {
         this->monitor_session();
         this->schedule_monitor();

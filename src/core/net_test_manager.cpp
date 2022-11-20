@@ -39,7 +39,7 @@ void net_test_manager::schedule_dispatch_test() {
             }
         }
     });
-    schedule_timer.expires_from_now(boost::posix_time::milliseconds(100));
+    schedule_timer.expires_from_now(boost::posix_time::milliseconds(1000));
     schedule_timer.async_wait([this](error_code ec) { schedule_dispatch_test(); });
 }
 test_case net_test_manager::poll_one_test() {
@@ -65,9 +65,9 @@ test_case net_test_manager::poll_one_test() {
     return t_case;
 }
 void net_test_manager::schedule_generate_key() {
-    generate_key_timer.expires_from_now(boost::posix_time::milliseconds(100));
+    generate_key_timer.expires_from_now(boost::posix_time::milliseconds(1000));
     generate_key_timer.async_wait([this](error_code ec) {
-        key_count += TEST_QPS / 10.0;
+        key_count += TEST_QPS;
         key_count = min(TEST_QPS * 1.0, (double) key_count);
         schedule_generate_key();
     });
