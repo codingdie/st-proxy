@@ -19,10 +19,8 @@ proxy_session::proxy_session(io_context &context, string tag)
     : read_counter(), write_counter(), client_sock(context), tag(std::move(tag)), stage(STAGE::CONNECTING),
       proxy_sock(context) {
     static std::atomic<uint64_t> id_generator(time::now());
-    read_proxy_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
-    read_client_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
-    write_proxy_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
-    write_client_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
+    in_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
+    out_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
     id = id_generator++;
 }
 
@@ -149,35 +147,35 @@ void proxy_session::proxy_connect(stream_tunnel *tunnel, const std::function<voi
         if (error) {
             complete(false);
         } else {
-            write_proxy_buffer[0] = 0x05;
-            write_proxy_buffer[1] = 0x01;
-            write_proxy_buffer[2] = 0x00;
+            out_buffer[0] = 0x05;
+            out_buffer[1] = 0x01;
+            out_buffer[2] = 0x00;
             write_proxy(3, [=](boost::system::error_code error) {
                 if (error) {
                     complete(false);
                     return;
                 }
                 this->read_proxy(2, [=](boost::system::error_code error) {
-                    if (!error && read_proxy_buffer[0] == 0x05 && read_proxy_buffer[1] == 0x00) {
-                        write_proxy_buffer[0] = 0x05;
-                        write_proxy_buffer[1] = 0x01;
-                        write_proxy_buffer[2] = 0x00;
-                        write_proxy_buffer[3] = 0x01;
+                    if (!error && in_buffer[0] == 0x05 && in_buffer[1] == 0x00) {
+                        out_buffer[0] = 0x05;
+                        out_buffer[1] = 0x01;
+                        out_buffer[2] = 0x00;
+                        out_buffer[3] = 0x01;
                         auto ipArray = dist_end.address().to_v4().to_bytes();
-                        write_proxy_buffer[4] = ipArray[0];
-                        write_proxy_buffer[5] = ipArray[1];
-                        write_proxy_buffer[6] = ipArray[2];
-                        write_proxy_buffer[7] = ipArray[3];
+                        out_buffer[4] = ipArray[0];
+                        out_buffer[5] = ipArray[1];
+                        out_buffer[6] = ipArray[2];
+                        out_buffer[7] = ipArray[3];
                         uint16_t port = dist_end.port();
-                        write_proxy_buffer[8] = (port >> 8) & 0XFF;
-                        write_proxy_buffer[9] = port & 0XFF;
+                        out_buffer[8] = (port >> 8) & 0XFF;
+                        out_buffer[9] = port & 0XFF;
                         write_proxy(10, [=](boost::system::error_code error) {
                             if (error) {
                                 complete(false);
                                 return;
                             }
                             this->read_proxy(10, [=](boost::system::error_code error) {
-                                if (!error && read_proxy_buffer[0] == 0x05 && read_proxy_buffer[1] == 0x00) {
+                                if (!error && in_buffer[0] == 0x05 && in_buffer[1] == 0x00) {
                                     complete(true);
                                 } else {
                                     complete(false);
@@ -234,7 +232,6 @@ void proxy_session::bind_local_port(basic_endpoint<tcp> &endpoint, boost::system
 
 void proxy_session::read_client() {
     read_client_max("read_client", PROXY_BUFFER_SIZE, [=](size_t size) {
-        copy_byte(this->read_client_buffer, this->write_proxy_buffer, size);
         write_proxy(size);
     });
 }
@@ -245,7 +242,7 @@ void proxy_session::read_client_max(const string &tag, size_t maxSize,
         shutdown();
         return;
     }
-    client_sock.async_read_some(buffer(read_client_buffer, sizeof(uint8_t) * maxSize),
+    client_sock.async_read_some(buffer(out_buffer, sizeof(uint8_t) * maxSize),
                                 [=](boost::system::error_code error, size_t size) {
                                     logger::traceId = this->id;
                                     if (!error) {
@@ -262,19 +259,17 @@ void proxy_session::read_proxy() {
         shutdown();
         return;
     }
-    proxy_sock.async_read_some(
-            buffer(read_proxy_buffer, sizeof(uint8_t) * PROXY_BUFFER_SIZE),
-            [=](boost::system::error_code error, size_t size) {
-                logger::traceId = this->id;
-                auto first_packet_time = st::utils::time::now() - begin;
+    proxy_sock.async_read_some(buffer(in_buffer, sizeof(uint8_t) * PROXY_BUFFER_SIZE), [=](boost::system::error_code
+                                                                                                   error,
+                                                                                           size_t size) {
+        logger::traceId = this->id;
+        auto first_packet_time = st::utils::time::now() - begin;
 
-                if (read_counter.total() == 0) {
-                    apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
-                                     first_packet_time);
-                    if (error) {
-                        if (!is_net_test() || dist_end.port() == 80 || dist_end.port() == 443) {
-                            quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(),
-                                                                   connected_tunnel);
+        if (read_counter.total() == 0) {
+            apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}), first_packet_time);
+            if (error) {
+                if (!is_net_test() || dist_end.port() == 80 || dist_end.port() == 443) {
+                    quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
                         }
                         logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
                     } else {
@@ -285,7 +280,6 @@ void proxy_session::read_proxy() {
 
                 if (!error) {
                     read_counter += size;
-                    copy_byte(read_proxy_buffer, write_client_buffer, size);
                     write_client(size);
                 } else {
                     process_error(error, "read_proxy");
@@ -295,7 +289,7 @@ void proxy_session::read_proxy() {
 
 void proxy_session::read_proxy(size_t size, const std::function<void(boost::system::error_code error)> &complete) {
     if (proxy_sock.is_open()) {
-        proxy_sock.async_receive(buffer(read_proxy_buffer, sizeof(uint8_t) * size),
+        proxy_sock.async_receive(buffer(in_buffer, sizeof(uint8_t) * size),
                                  [=](boost::system::error_code error, size_t size) { complete(error); });
     } else {
         complete(boost::asio::error::make_error_code(boost::asio::error::connection_aborted));
@@ -346,7 +340,7 @@ void proxy_session::write_proxy(size_t writeSize,
         return;
     }
     size_t len = sizeof(uint8_t) * writeSize;
-    boost::asio::async_write(proxy_sock, buffer(write_proxy_buffer, len), boost::asio::transfer_at_least(len),
+    boost::asio::async_write(proxy_sock, buffer(out_buffer, len), boost::asio::transfer_at_least(len),
                              [=](boost::system::error_code error, size_t size) {
                                  logger::traceId = this->id;
                                  if (!error) {
@@ -368,7 +362,7 @@ void proxy_session::write_client(const string &tag, size_t writeSize, const std:
         shutdown();
         return;
     }
-    boost::asio::async_write(client_sock, buffer(write_client_buffer, len), boost::asio::transfer_at_least(len),
+    boost::asio::async_write(client_sock, buffer(in_buffer, len), boost::asio::transfer_at_least(len),
                              [=](boost::system::error_code error, size_t size) {
                                  logger::traceId = this->id;
                                  if (error) {
@@ -383,10 +377,8 @@ void proxy_session::write_client(const string &tag, size_t writeSize, const std:
 proxy_session::~proxy_session() {
     logger::traceId = id;
     logger::INFO << idStr() << "disconnect" << transmit_log() << END;
-    mem::pfree(read_proxy_buffer, PROXY_BUFFER_SIZE);
-    mem::pfree(read_client_buffer, PROXY_BUFFER_SIZE);
-    mem::pfree(write_proxy_buffer, PROXY_BUFFER_SIZE);
-    mem::pfree(write_client_buffer, PROXY_BUFFER_SIZE);
+    mem::pfree(in_buffer, PROXY_BUFFER_SIZE);
+    mem::pfree(out_buffer, PROXY_BUFFER_SIZE);
 }
 
 string proxy_session::idStr() {

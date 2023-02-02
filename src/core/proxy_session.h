@@ -42,10 +42,8 @@ public:
 
 private:
     vector<stream_tunnel *> selected_tunnels;
-    byte *read_client_buffer;
-    byte *write_proxy_buffer;
-    byte *write_client_buffer;
-    byte *read_proxy_buffer;
+    byte *out_buffer;
+    byte *in_buffer;
     mutex stageLock;
     uint64_t try_connect_index = 0;
     uint64_t begin = 0;
