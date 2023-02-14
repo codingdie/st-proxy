@@ -12,8 +12,8 @@ if [ "$1" != "clean" ]; then
   iptables -t nat -N st-proxy
   iptables -t nat -A st-proxy -m set --match-set st-proxy-whitelist dst -j RETURN
   if [ "$2" != "" ]; then
-
-  iptables -t nat -A st-proxy -m multiport -p tcp ! --destination-port  443,80 -j RETURN
+    iptables -t nat -A st-proxy -m multiport -p tcp ! --destination-port  443,80 -j RETURN
+  fi
 #  iptables -t nat -A st-proxy -p tcp  -j LOG --log-prefix "st-proxy-all" --log-level 6
 #  iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j LOG --log-prefix "st-proxy-mark" --log-level 6
 
