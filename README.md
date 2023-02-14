@@ -13,18 +13,17 @@ st-proxy is a smart local transport proxy which support to config multi socks5/d
 2. execute ```install.sh```
 3. the st-proxy will install to /usr/local/bin, the default configs will install to /usr/local/etc/st/dns   
 #### for openwrt 
-1. add openwrt feeds https://github.com/codingdie/openwrt-packages 
+1. add openwrt feeds https://github.com/codingdie/openwrt-packages
 2. choose luci-app-st-proxy and install
 3. the app like this![image](docs/st-proxy-openwrt.jpg)
-ß
 
 ### How to run?  
 #### 1. Run Direct  
-*  `st-proxy`search config in /etc/st/dns or /usr/local/etc/st/dns
-*  `st-proxy  -c /xxx/xxx`  specific the config folder
+* `st-proxy`search config in /etc/st/dns or /usr/local/etc/st/dns
+* `st-proxy  -c /xxx/xxx`  specific the config folder
 #### 2. Run As Service(Recommend)
-*  `sudo st-proxy -d start`  
-*  `sudo st-proxy -d stop`  
+* `sudo st-proxy -d start`  
+* `sudo st-proxy -d stop`  
 
 ### How to config?  
 ```

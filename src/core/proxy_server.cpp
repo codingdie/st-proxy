@@ -133,17 +133,12 @@ bool proxy_server::add_nat_whitelist() {
 
 
 bool proxy_server::intercept_nat_traffic(bool intercept) {
-    string command = "sh " + st::proxy::config::uniq().baseConfDir + "/nat/init.sh " + (intercept ? "" : "clean");
+    string command = "sh " + st::proxy::config::uniq().baseConfDir + "/nat/rule.sh " +
+                     (intercept ? "intercept" : "clean") + " " +
+                     (st::proxy::config::uniq().only_proxy_http ? "443,80" : "");
     string result;
     string error;
-
     if (shell::exec(command, result, error)) {
-        if (intercept && config::uniq().only_proxy_http) {
-            if (shell::exec("iptables -t nat -A st-proxy -m multiport -p tcp ! --destination-port   443,80 -j RETURN",
-                            result, error)) {
-                logger::ERROR << "intercept nat traffic for only http error!" << error << END;
-            }
-        }
         return true;
     } else {
         logger::ERROR << "intercept nat traffic error!" << error << END;
