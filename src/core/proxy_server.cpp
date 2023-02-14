@@ -122,7 +122,7 @@ bool proxy_server::init() {
 }
 
 bool proxy_server::add_nat_whitelist() {
-    for (auto ip : st::proxy::config::uniq().whitelistIPs) {
+    for (auto ip : st::proxy::config::uniq().whitelist_ips) {
         if (!nat_utils::INSTANCE.addToWhitelist(ip)) {
             return false;
         }
@@ -133,9 +133,21 @@ bool proxy_server::add_nat_whitelist() {
 
 
 bool proxy_server::intercept_nat_traffic(bool intercept) {
-    string command = "sh " + st::proxy::config::uniq().baseConfDir + "/nat/rule.sh " +
-                     (intercept ? "intercept" : "clean") + " " +
-                     (st::proxy::config::uniq().only_proxy_http ? "443,80" : "");
+    auto &targets = config::uniq().proxy_target;
+    string proxy_dist_port = "";
+    if (targets.find("all") == targets.end()) {
+        if (targets.find("dns") != targets.end()) {
+            proxy_dist_port += "53,853,";
+        }
+        if (targets.find("http") != targets.end()) {
+            proxy_dist_port += "80,443,";
+        }
+    }
+    if (!proxy_dist_port.empty()) {
+        proxy_dist_port = proxy_dist_port.substr(0, proxy_dist_port.size() - 1);
+    }
+    string command = "sh " + st::proxy::config::uniq().base_conf_dir + "/nat/rule.sh " +
+                     (intercept ? "intercept" : "clean") + " " + proxy_dist_port;
     string result;
     string error;
     if (shell::exec(command, result, error)) {

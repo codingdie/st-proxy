@@ -7,7 +7,7 @@
 using namespace st::proxy;
 using namespace st::utils;
 void config::load(const string &configPathInput) {
-    baseConfDir = boost::filesystem::absolute(configPathInput).normalize().string();
+    base_conf_dir = boost::filesystem::absolute(configPathInput).normalize().string();
     string configPath = configPathInput + "/config.json";
     if (st::utils::file::exit(configPath)) {
         ptree tree;
@@ -24,8 +24,14 @@ void config::load(const string &configPathInput) {
         this->so_timeout = stoi(tree.get("so_timeout", to_string(this->so_timeout)));
         this->connect_timeout = stoi(tree.get("connect_timeout", to_string(this->connect_timeout)));
         this->dns = tree.get("dns", string(this->dns));
-        this->only_proxy_http = tree.get("only_proxy_http", false);
-
+        auto proxy_target_node = tree.get_child_optional("proxy_target");
+        if (proxy_target_node.is_initialized()) {
+            auto proxy_target_arr = proxy_target_node.get();
+            for (boost::property_tree::ptree::value_type &v : proxy_target_arr) {
+                auto target = v.second.get_value<string>();
+                this->proxy_target.emplace(target);
+            }
+        }
         auto whitelistNode = tree.get_child_optional("whitelist");
         if (whitelistNode.is_initialized()) {
             auto whitelistArr = whitelistNode.get();
@@ -33,7 +39,7 @@ void config::load(const string &configPathInput) {
                 auto domain = v.second.get_value<string>();
                 this->whitelist.emplace(domain);
             }
-            this->whitelistIPs = parse_whitelist_to_ips(this->whitelist);
+            this->whitelist_ips = parse_whitelist_to_ips(this->whitelist);
         }
         auto tunnelNodes = tree.get_child("tunnels");
         if (!tunnelNodes.empty()) {

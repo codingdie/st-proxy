@@ -34,7 +34,9 @@
   "so_timeout": 10000,
   "parallel": 16,
   "dns": "192.168.31.1",
-  "only_proxy_http": false,
+  "proxy_target": [
+    "all"
+  ],
   "whitelist": [
     "baidu.com",
     "www.baidu.com"

@@ -67,7 +67,9 @@ st-proxy is a smart local transport proxy which support to config multi socks5/d
   ],
   "so_timeout": 600000,     #socket timeout ms (two package max interval)
   "connect_timeout": 10000, #connect timeout ms
-   "only_proxy_http": false,
+    "proxy_target": [
+    "all"
+  ],
   "parallel": 8,         #io thread num 
   "dns": "192.168.31.1", #prefered dns server, recommend st-dns
   "whitelist": [         #whitelist to not proxy

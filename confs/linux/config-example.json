@@ -36,7 +36,9 @@
   ],
   "so_timeout": 600000,
   "connect_timeout": 10000,
-  "only_proxy_http": false,
+  "proxy_target": [
+    "all"
+  ],
   "parallel": 8,
   "dns": "192.168.31.1",
   "whitelist": [

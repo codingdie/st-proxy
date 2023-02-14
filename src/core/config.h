@@ -32,12 +32,12 @@ namespace st {
             int console_port = 5858;
             int so_timeout = 60000;
             int connect_timeout = 10000;
-            string baseConfDir = "/etc/st/proxy";
+            string base_conf_dir = "/etc/st/proxy";
             vector<stream_tunnel *> tunnels;
             string dns;
             set<string> whitelist;
-            set<uint32_t> whitelistIPs;
-            bool only_proxy_http = false;
+            set<uint32_t> whitelist_ips;
+            set<string> proxy_target;
             config() = default;
             static config &uniq();
             void load(const string &configPathInput);
