@@ -2,6 +2,7 @@ scriptDir=$(
   cd $(dirname $0)
   pwd
 )
+ulimit -n 20000
 set -e
 set +e
 pfctl -e

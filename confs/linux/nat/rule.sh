@@ -1,3 +1,4 @@
+ulimit -n 65000
 if [ "$1" != "clean" ]; then
   ipset create -! st-proxy-whitelist hash:net
   ipset add -! st-proxy-whitelist 10.0.0.0/8
@@ -13,9 +14,16 @@ if [ "$1" != "clean" ]; then
 #  iptables -t nat -A st-proxy -p tcp  -j LOG --log-prefix "st-proxy-all" --log-level 6
 #  iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j LOG --log-prefix "st-proxy-mark" --log-level 6
 
-  # Anything else should be redirected to st-proxy's local port
+  # 1024 放行
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j RETURN
+  # 1025 测试流量
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1025 -j REDIRECT --to-ports 40001
+  # 1026 强制proxy
+  iptables -t nat -A st-proxy -p tcp  -m mark --mark 1026 -j REDIRECT --to-ports 40000
+  # 端口b
+  if [ "$2" != "" ]; then
+      iptables -t nat -A st-proxy -m multiport -p tcp ! --destination-port $2 -j RETURN
+  fi
   iptables -t nat -A st-proxy -p tcp -j REDIRECT --to-ports 40000
 
   # Apply the rules

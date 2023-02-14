@@ -1,3 +1,5 @@
+cd $(dirname $0)
+ulimit -n 65000
 if [ "$1" != "clean" ]; then
   ipset create -! st-proxy-whitelist hash:net
   ipset create -! st-proxy-test hash:net
