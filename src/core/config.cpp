@@ -24,6 +24,8 @@ void config::load(const string &configPathInput) {
         this->so_timeout = stoi(tree.get("so_timeout", to_string(this->so_timeout)));
         this->connect_timeout = stoi(tree.get("connect_timeout", to_string(this->connect_timeout)));
         this->dns = tree.get("dns", string(this->dns));
+        this->only_proxy_http = tree.get("only_proxy_http", false);
+
         auto whitelistNode = tree.get_child_optional("whitelist");
         if (whitelistNode.is_initialized()) {
             auto whitelistArr = whitelistNode.get();

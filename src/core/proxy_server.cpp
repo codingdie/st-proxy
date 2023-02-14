@@ -136,7 +136,14 @@ bool proxy_server::intercept_nat_traffic(bool intercept) {
     string command = "sh " + st::proxy::config::uniq().baseConfDir + "/nat/init.sh " + (intercept ? "" : "clean");
     string result;
     string error;
+
     if (shell::exec(command, result, error)) {
+        if (intercept && config::uniq().only_proxy_http) {
+            if (shell::exec("iptables -t nat -A st-proxy -m multiport -p tcp ! --destination-port   443,80 -j RETURN",
+                            result, error)) {
+                logger::ERROR << "intercept nat traffic for only http error!" << error << END;
+            }
+        }
         return true;
     } else {
         logger::ERROR << "intercept nat traffic error!" << error << END;
@@ -209,10 +216,13 @@ void proxy_server::accept(io_context *context, tcp::acceptor *acceptor, const st
     auto *session = new proxy_session(*context, tag);
     acceptor->async_accept(session->client_sock, [=](const boost::system::error_code &error) {
         if (!acceptor->is_open() || state == 2) {
+            delete session;
             return;
         }
         if (!error) {
             manager->add(session);
+        } else {
+            delete session;
         }
         this->accept(context, acceptor, tag);
     });

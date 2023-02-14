@@ -37,6 +37,7 @@ namespace st {
             string dns;
             set<string> whitelist;
             set<uint32_t> whitelistIPs;
+            bool only_proxy_http = false;
             config() = default;
             static config &uniq();
             void load(const string &configPathInput);
