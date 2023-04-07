@@ -144,9 +144,9 @@ void net_test_manager::do_test(uint32_t dist_ip, uint16_t port, const net_test_c
     if (port == 443) {
         tls_handshake_v2(dist_ip, callback);
     } else if (port == 80) {
-        callback(false, false, true);
+        callback(false, false, 0);
     } else {
-        callback(false, false, true);
+        callback(false, false, 0);
     }
 }
 void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net_test_callback &callback) {

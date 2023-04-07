@@ -11,7 +11,6 @@
 #define select_tunnels_tesult vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>>
 class quality_analyzer {
 public:
-    static const uint32_t RECORD_EXPIRE_TIME = 1000L * 60 * 60 * 24;
     static const uint32_t IP_TUNNEL_TEST_COUNT = 3;
     static const uint32_t TUNNEL_TEST_COUNT = 10;
 
@@ -37,13 +36,12 @@ public:
     void set_io_context(io_context *context);
 
     string analyse_ip(uint32_t ip);
+
     string analyse_ip_tunnels(uint32_t ip);
 
     select_tunnels_tesult select_tunnels(uint32_t dist_ip, const vector<string> &dist_hosts, const string &prefer_area);
 
     uint16_t cal_need_test_count(const select_tunnels_tesult &tunnels);
-
-    bool check_all_failed(const select_tunnels_tesult &result);
 
     string analyse_tunnel();
 
