@@ -357,11 +357,3 @@ void quality_analyzer::delete_all_record() {
         db.erase(item->id());
     }
 }
-bool quality_analyzer::check_all_failed(const select_tunnels_tesult &result) {
-    for (const auto &item : result) {
-        if (check_all_failed(item.second.second)) {
-            return true;
-        }
-    }
-    return false;
-}
