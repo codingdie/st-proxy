@@ -28,7 +28,7 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
             add_session_record(tunnel->id(), tunnel_record, se);
             se.clear_ip();
         }
-        if (!ip_tunnel_failed && check_all_failed(ip_tunnel_record)) {
+        if (!ip_tunnel_failed) {
             add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se);
         }
         if (check_all_failed(ip_record)) {
@@ -127,10 +127,14 @@ void quality_analyzer::process_record(quality_record &record) {
     auto success = 0;
     auto failed = 0;
     uint64_t cost = 0;
+    uint32_t record_expire_time = 1000L * 60 * 60 * 24;
+    if (record.type() != st::proxy::proto::IP_TUNNEL) {
+        record_expire_time = 1000L * 60 * 60;
+    }
     for (auto i = 0; i < record.records_size() && i < record.queue_limit(); i++) {
         const session_record &s_record = record.records(i);
         auto time_diff = time::now() - s_record.timestamp();
-        if (time_diff > RECORD_EXPIRE_TIME) {
+        if (time_diff > record_expire_time) {
             continue;
         }
         if (s_record.success()) {
