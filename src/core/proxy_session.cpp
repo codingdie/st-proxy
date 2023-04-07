@@ -48,8 +48,8 @@ void proxy_session::start() {
             virtual_port_manager::uniq().get_real_port(dist_end.address().to_v4().to_uint(), dist_end.port());
     this->dist_end = tcp::endpoint(make_address_v4(this->dist_end.address().to_v4().to_string()), realDistPort.second);
     this->prefer_area = realDistPort.first;
-    this->distArea = st::areaip::manager::uniq().get_area(this->dist_end.address().to_v4().to_uint());
-    if (this->distArea == "default") {
+    this->dist_area = st::areaip::manager::uniq().get_area(this->dist_end.address().to_v4().to_uint());
+    if (this->dist_area == "default") {
         logger::WARN << "ip" << st::utils::ipv4::ip_to_str(this->dist_end.address().to_v4().to_uint())
                      << "area not recognized" << END;
     }
@@ -112,9 +112,7 @@ void proxy_session::select_tunnels() {
     auto select_result = quality_analyzer::uniq().select_tunnels(dist_ip, dist_hosts, prefer_area);
     int need_test_count = quality_analyzer::uniq().cal_need_test_count(select_result);
     if (need_test_count > 0 && !is_net_test()) {
-        if (select_result[0].first->type != "DIRECT") {
-            net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result[0].first->type == "DIRECT" ? 0 : 1);
-        }
+        net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result[0].first->type == "DIRECT" ? 0 : 1);
     }
     for (const auto &it : select_result) {
         stream_tunnel *tunnel = it.first;
@@ -231,9 +229,7 @@ void proxy_session::bind_local_port(basic_endpoint<tcp> &endpoint, boost::system
 }
 
 void proxy_session::read_client() {
-    read_client_max("read_client", PROXY_BUFFER_SIZE, [=](size_t size) {
-        write_proxy(size);
-    });
+    read_client_max("read_client", PROXY_BUFFER_SIZE, [=](size_t size) { write_proxy(size); });
 }
 
 void proxy_session::read_client_max(const string &tag, size_t maxSize,
@@ -270,21 +266,21 @@ void proxy_session::read_proxy() {
             if (error) {
                 if (!is_net_test() || dist_end.port() == 80 || dist_end.port() == 443) {
                     quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
-                        }
-                        logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
-                    } else {
-                        quality_analyzer::uniq().record_first_package_success(dist_end.address().to_v4().to_uint(),
-                                                                              connected_tunnel, first_packet_time);
-                    }
                 }
+                logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
+            } else {
+                quality_analyzer::uniq().record_first_package_success(dist_end.address().to_v4().to_uint(),
+                                                                      connected_tunnel, first_packet_time);
+            }
+        }
 
-                if (!error) {
-                    read_counter += size;
-                    write_client(size);
-                } else {
-                    process_error(error, "read_proxy");
-                }
-            });
+        if (!error) {
+            read_counter += size;
+            write_client(size);
+        } else {
+            process_error(error, "read_proxy");
+        }
+    });
 }
 
 void proxy_session::read_proxy(size_t size, const std::function<void(boost::system::error_code error)> &complete) {
@@ -429,7 +425,7 @@ unordered_map<string, string> proxy_session::dimensions(unordered_map<string, st
                                             {"tunnel_area", connected_tunnel != nullptr ? connected_tunnel->area : ""},
                                             {"client_ip", client_end.address().to_string()},
                                             {"dist_host", dist_hosts[0]},
-                                            {"dist_area", distArea},
+                                            {"dist_area", dist_area},
                                             {"tag", tag},
                                             {"prefer_area", prefer_area},
                                             {"dist_ip", dist_end.address().to_string()},

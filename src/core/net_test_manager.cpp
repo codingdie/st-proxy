@@ -3,6 +3,7 @@
 //
 
 #include "net_test_manager.h"
+#include "command/dns_command.h"
 #include "nat_utils.h"
 #include "quality_analyzer.h"
 #include <boost/asio/ssl.hpp>
@@ -22,7 +23,8 @@ void net_test_manager::schedule_dispatch_test() {
             test_case t_case = poll_one_test();
             if (t_case.ip != 0) {
                 running_test++;
-                auto result = quality_analyzer::uniq().select_tunnels(t_case.ip, {}, "");
+                auto result = quality_analyzer::uniq().select_tunnels(t_case.ip,
+                                                                      st::command::dns::reverse_resolve(t_case.ip), "");
                 auto need_test_count = quality_analyzer::uniq().cal_need_test_count(result);
                 if (need_test_count > 0) {
                     logger::DEBUG << "net test begin" << t_case.key() << "count" << need_test_count << END;
