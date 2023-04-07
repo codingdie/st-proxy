@@ -48,7 +48,7 @@ private:
     uint64_t try_connect_index = 0;
     uint64_t begin = 0;
     string prefer_area;
-    string distArea;
+    string dist_area;
     tcp::endpoint dist_end;
     tcp::endpoint client_end;
     vector<string> dist_hosts;

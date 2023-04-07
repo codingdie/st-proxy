@@ -33,8 +33,6 @@ public:
 
     void delete_record(uint32_t ip);
 
-    void set_io_context(io_context *context);
-
     string analyse_ip(uint32_t ip);
 
     string analyse_ip_tunnels(uint32_t ip);
@@ -46,6 +44,9 @@ public:
     string analyse_tunnel();
 
     void delete_all_record();
+
+    void start(io_context *ic);
+    void stop();
 
 private:
     st::kv::disk_kv db;
@@ -60,10 +61,9 @@ private:
     static void process_record(st::proxy::proto::quality_record &record);
     proxy::proto::quality_record get_record(const string &key);
     void execute(std::function<void()> func);
-    void del_ip_all_tunnel_record(uint32_t dist_ip);
     bool check_all_failed(const proxy::proto::quality_record &record);
     static uint8_t need_more_test(const st::proxy::proto::quality_record &record);
-    bool has_record_ip_failed(uint32_t dist_ip, const proxy::proto::quality_record &tunnel_record) const;
+    static bool has_record_ip_failed(uint32_t dist_ip, const proxy::proto::quality_record &tunnel_record);
 };
 
 

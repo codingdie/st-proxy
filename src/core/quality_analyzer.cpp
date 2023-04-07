@@ -33,11 +33,11 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         }
         if (check_all_failed(ip_record)) {
             proxy::shm::uniq().forbid_ip(dist_ip);
-            del_ip_all_tunnel_record(dist_ip);
+            delete_record(dist_ip);
         }
     });
 }
-bool quality_analyzer::has_record_ip_failed(uint32_t dist_ip, const quality_record &tunnel_record) const {
+bool quality_analyzer::has_record_ip_failed(uint32_t dist_ip, const quality_record &tunnel_record) {
     bool contains = false;
     for (const auto &item : tunnel_record.records()) {
         if (!item.success() && item.ip() == dist_ip) {
@@ -47,11 +47,7 @@ bool quality_analyzer::has_record_ip_failed(uint32_t dist_ip, const quality_reco
     }
     return contains;
 }
-void quality_analyzer::del_ip_all_tunnel_record(uint32_t dist_ip) {
-    for (const auto &item : proxy::config::uniq().tunnels) {
-        db.erase(build_key(dist_ip, item));
-    }
-}
+
 void quality_analyzer::record_first_package_success(uint32_t dist_ip, stream_tunnel *tunnel, uint64_t cost) {
     execute([=]() {
         session_record se;
@@ -181,7 +177,6 @@ string quality_analyzer::build_key(uint32_t dist_ip, stream_tunnel *tunnel) {
 }
 string quality_analyzer::build_key(uint32_t dist_ip) { return st::utils::ipv4::ip_to_str(dist_ip); }
 
-void quality_analyzer::set_io_context(io_context *context) { this->ic = context; }
 uint8_t quality_analyzer::need_more_test(const quality_record &record) {
     uint32_t result = record.queue_limit() - (record.first_package_failed() + record.first_package_success());
     return std::min(record.queue_limit(), result);
@@ -323,6 +318,7 @@ void quality_analyzer::delete_record(uint32_t ip) {
         for (const auto &item : st::proxy::config::uniq().tunnels) {
             db.erase(build_key(ip, item));
         }
+        db.erase(build_key(ip));
     });
 }
 string quality_analyzer::analyse_tunnel() {
@@ -357,3 +353,5 @@ void quality_analyzer::delete_all_record() {
         db.erase(item->id());
     }
 }
+void quality_analyzer::start(io_context *ic) { this->ic = ic; }
+void quality_analyzer::stop() { this->ic = nullptr; }

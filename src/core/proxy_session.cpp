@@ -48,8 +48,8 @@ void proxy_session::start() {
             virtual_port_manager::uniq().get_real_port(dist_end.address().to_v4().to_uint(), dist_end.port());
     this->dist_end = tcp::endpoint(make_address_v4(this->dist_end.address().to_v4().to_string()), realDistPort.second);
     this->prefer_area = realDistPort.first;
-    this->distArea = st::areaip::manager::uniq().get_area(this->dist_end.address().to_v4().to_uint());
-    if (this->distArea == "default") {
+    this->dist_area = st::areaip::manager::uniq().get_area(this->dist_end.address().to_v4().to_uint());
+    if (this->dist_area == "default") {
         logger::WARN << "ip" << st::utils::ipv4::ip_to_str(this->dist_end.address().to_v4().to_uint())
                      << "area not recognized" << END;
     }
@@ -425,7 +425,7 @@ unordered_map<string, string> proxy_session::dimensions(unordered_map<string, st
                                             {"tunnel_area", connected_tunnel != nullptr ? connected_tunnel->area : ""},
                                             {"client_ip", client_end.address().to_string()},
                                             {"dist_host", dist_hosts[0]},
-                                            {"dist_area", distArea},
+                                            {"dist_area", dist_area},
                                             {"tag", tag},
                                             {"prefer_area", prefer_area},
                                             {"dist_ip", dist_end.address().to_string()},

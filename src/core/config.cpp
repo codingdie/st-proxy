@@ -44,7 +44,7 @@ void config::load(const string &configPathInput) {
         auto tunnelNodes = tree.get_child("tunnels");
         if (!tunnelNodes.empty()) {
             for (auto it = tunnelNodes.begin(); it != tunnelNodes.end(); it++) {
-                stream_tunnel *streamTunnel = parseStreamTunnel(it->second);
+                stream_tunnel *streamTunnel = parse_stream_tunnel(it->second);
                 tunnels.emplace_back(streamTunnel);
             }
         }
@@ -76,7 +76,7 @@ set<uint32_t> config::parse_whitelist_to_ips(const set<string> &domains) const {
 }
 
 template<class K, class D, class C>
-stream_tunnel *config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
+stream_tunnel *config::parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const {
     string type = tunnel.get("type", "DIRECT");
     if (type.empty()) {
         logger::ERROR << "tunnel type empty!" << END;
@@ -95,20 +95,21 @@ stream_tunnel *config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
         }
     }
 
-    auto streamTunnel = new stream_tunnel(type, serverIp, tunnelPort);
-    streamTunnel->area = tunnel.get("area", "");
+    auto st = new stream_tunnel(type, serverIp, tunnelPort);
+    st->area = tunnel.get("area", "");
+    st->http_check_url = tunnel.get("http_check_url", "");
     boost::optional<basic_ptree<K, D, C> &> areaListNode = tunnel.get_child_optional("proxy_areas");
     if (areaListNode.is_initialized()) {
         basic_ptree<K, D, C> arealistArr = areaListNode.get();
         for (boost::property_tree::ptree::value_type &v : arealistArr) {
             string area = v.second.get_value<string>();
-            streamTunnel->proxyAreas.emplace_back(area);
+            st->proxyAreas.emplace_back(area);
         }
     }
-    if (streamTunnel->area.length() > 0) {
-        streamTunnel->proxyAreas.insert(streamTunnel->proxyAreas.begin(), streamTunnel->area);
+    if (st->area.length() > 0) {
+        st->proxyAreas.insert(st->proxyAreas.begin(), st->area);
     }
-    for (auto &area : streamTunnel->proxyAreas) {
+    for (auto &area : st->proxyAreas) {
         if (!st::areaip::manager::uniq().load_area_ips(area)) {
             exit(1);
         }
@@ -119,15 +120,15 @@ stream_tunnel *config::parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const {
         basic_ptree<K, D, C> whitelistArr = whitelistNode.get();
         for (boost::property_tree::ptree::value_type &v : whitelistArr) {
             string domain = v.second.get_value<string>();
-            streamTunnel->whitelist.emplace(domain);
+            st->whitelist.emplace(domain);
         }
-        streamTunnel->whitelistIPs = parse_whitelist_to_ips(streamTunnel->whitelist);
-        if (!streamTunnel->whitelist.empty()) {
-            logger::INFO << streamTunnel->id() << "parse whitelist" << join(streamTunnel->whitelist, ",")
-                         << st::utils::ipv4::ips_to_str(streamTunnel->whitelistIPs) << END;
+        st->ip_whitelist = parse_whitelist_to_ips(st->whitelist);
+        if (!st->whitelist.empty()) {
+            logger::INFO << st->id() << "parse whitelist" << join(st->whitelist, ",")
+                         << st::utils::ipv4::ips_to_str(st->ip_whitelist) << END;
         }
     }
-    return streamTunnel;
+    return st;
 }
 vector<uint32_t> config::resolve_domain(const string &domain) const {
     vector<uint32_t> ips = st::utils::dns::query(domain);

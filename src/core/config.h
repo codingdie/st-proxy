@@ -45,7 +45,7 @@ namespace st {
 
         private:
             template<class K, class D, class C>
-            stream_tunnel *parseStreamTunnel(basic_ptree<K, D, C> &tunnel) const;
+            stream_tunnel *parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const;
             set<uint32_t> parse_whitelist_to_ips(const set<string> &domains) const;
         };
     };// namespace proxy

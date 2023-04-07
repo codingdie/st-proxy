@@ -163,12 +163,11 @@ void proxy_server::start() {
     if (!init()) {
         return;
     }
-    quality_analyzer::uniq();
     vector<thread> threads;
     io_context *schedule_ic = worker_ctxs.at(worker_ctxs.size() - 1);
     threads.emplace_back([=]() { schedule_ic->run(); });
     manager = new session_manager(schedule_ic);
-    quality_analyzer::uniq().set_io_context(schedule_ic);
+    quality_analyzer::uniq().start(schedule_ic);
 
     unsigned int cpu_count = std::thread::hardware_concurrency();
     for (auto i = 0; i < 2; i++) {
@@ -198,7 +197,7 @@ void proxy_server::start() {
         th.join();
     }
     delete manager;
-    quality_analyzer::uniq().set_io_context(nullptr);
+    quality_analyzer::uniq().stop();
     logger::INFO << "st-proxy server stopped" << END;
 }
 void proxy_server::shutdown() {
