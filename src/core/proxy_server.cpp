@@ -122,7 +122,7 @@ bool proxy_server::init() {
 }
 
 bool proxy_server::add_nat_whitelist() {
-    for (auto ip : st::proxy::config::uniq().whitelist_ips) {
+    for (auto ip : st::proxy::config::uniq().ip_whitelist) {
         if (!nat_utils::INSTANCE.addToWhitelist(ip)) {
             return false;
         }
@@ -166,9 +166,10 @@ void proxy_server::start() {
     vector<thread> threads;
     io_context *schedule_ic = worker_ctxs.at(worker_ctxs.size() - 1);
     threads.emplace_back([=]() { schedule_ic->run(); });
-    manager = new session_manager(schedule_ic);
     quality_analyzer::uniq().start(schedule_ic);
-
+    manager = new session_manager(schedule_ic);
+    schedule_timer = new deadline_timer(*schedule_ic);
+    schedule();
     unsigned int cpu_count = std::thread::hardware_concurrency();
     for (auto i = 0; i < 2; i++) {
         threads.emplace_back([=]() {
@@ -201,7 +202,6 @@ void proxy_server::start() {
     logger::INFO << "st-proxy server stopped" << END;
 }
 void proxy_server::shutdown() {
-    intercept_nat_traffic(false);
     this->state = 2;
     for (boost::asio::io_context *ioContext : worker_ctxs) {
         ioContext->stop();
@@ -209,6 +209,9 @@ void proxy_server::shutdown() {
     for (boost::asio::io_context::work *iw : workers) {
         delete iw;
     }
+    delete schedule_timer;
+    this->schedule_timer = nullptr;
+    intercept_nat_traffic(false);
 }
 
 void proxy_server::wait_start() {
@@ -231,5 +234,14 @@ void proxy_server::accept(io_context *context, tcp::acceptor *acceptor, const st
             delete session;
         }
         this->accept(context, acceptor, tag);
+    });
+}
+
+void proxy_server::schedule() {
+    schedule_timer->expires_from_now(boost::posix_time::seconds(60));
+    schedule_timer->async_wait([&](boost::system::error_code ec) {
+        config::uniq().parse_whitelist_to_ips();
+        add_nat_whitelist();
+        this->schedule();
     });
 }

@@ -33,10 +33,13 @@ private:
     ip::tcp::acceptor *net_test_acceptor;
     vector<io_context::work *> workers;
     session_manager *manager;
+    boost::asio::deadline_timer *schedule_timer;
     st::console::udp_console console;
     void accept(io_context *context, tcp::acceptor *acceptor, const string &tag);
 
     bool init();
+
+    void schedule();
 
     static bool intercept_nat_traffic(bool intercept);
 

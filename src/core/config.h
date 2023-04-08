@@ -36,17 +36,18 @@ namespace st {
             vector<stream_tunnel *> tunnels;
             string dns;
             set<string> whitelist;
-            set<uint32_t> whitelist_ips;
+            set<uint32_t> ip_whitelist;
             set<string> proxy_target;
             config() = default;
             static config &uniq();
             void load(const string &configPathInput);
             vector<uint32_t> resolve_domain(const string &domain) const;
+            void parse_whitelist_to_ips();
 
         private:
+            set<uint32_t> parse_whitelist_to_ips(const set<string> &domains) const;
             template<class K, class D, class C>
             stream_tunnel *parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const;
-            set<uint32_t> parse_whitelist_to_ips(const set<string> &domains) const;
         };
     };// namespace proxy
 }// namespace st

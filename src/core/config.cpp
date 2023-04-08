@@ -39,7 +39,6 @@ void config::load(const string &configPathInput) {
                 auto domain = v.second.get_value<string>();
                 this->whitelist.emplace(domain);
             }
-            this->whitelist_ips = parse_whitelist_to_ips(this->whitelist);
         }
         auto tunnelNodes = tree.get_child("tunnels");
         if (!tunnelNodes.empty()) {
@@ -48,6 +47,7 @@ void config::load(const string &configPathInput) {
                 tunnels.emplace_back(streamTunnel);
             }
         }
+        parse_whitelist_to_ips();
         logger::init(tree);
     } else {
         logger::INFO << "st-proxy config file not exit!" << configPath << END;
@@ -122,11 +122,6 @@ stream_tunnel *config::parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const {
             string domain = v.second.get_value<string>();
             st->whitelist.emplace(domain);
         }
-        st->ip_whitelist = parse_whitelist_to_ips(st->whitelist);
-        if (!st->whitelist.empty()) {
-            logger::INFO << st->id() << "parse whitelist" << join(st->whitelist, ",")
-                         << st::utils::ipv4::ips_to_str(st->ip_whitelist) << END;
-        }
     }
     return st;
 }
@@ -143,4 +138,10 @@ vector<uint32_t> config::resolve_domain(const string &domain) const {
 config &config::uniq() {
     static config INSTANCE;
     return INSTANCE;
+}
+void config::parse_whitelist_to_ips() {
+    this->ip_whitelist = parse_whitelist_to_ips(this->whitelist);
+    for (auto &tunnel : this->tunnels) {
+        tunnel->ip_whitelist = parse_whitelist_to_ips(tunnel->whitelist);
+    }
 }
