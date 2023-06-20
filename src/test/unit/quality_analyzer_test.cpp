@@ -49,7 +49,7 @@ TEST(proxy_unit_tests, test_quality_analyzer_async) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
     auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel);
-    quality_analyzer::uniq().set_io_context(ic);
+    quality_analyzer::uniq().start(ic);
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 90);
     quality_analyzer::uniq().record_failed(distIp, tunnel);
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 30);
