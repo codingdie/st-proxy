@@ -49,6 +49,11 @@ void config::load(const string &configPathInput) {
         }
         parse_whitelist_to_ips();
         logger::init(tree);
+        auto area_ip_config_node = tree.get_child_optional("area_ip_config");
+        if (area_ip_config_node.is_initialized()) {
+            this->area_ip_config.load(area_ip_config_node.get());
+            areaip::manager::uniq().config(this->area_ip_config);
+        }
     } else {
         logger::INFO << "st-proxy config file not exit!" << configPath << END;
         exit(1);

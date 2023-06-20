@@ -38,6 +38,7 @@ namespace st {
             set<string> whitelist;
             set<uint32_t> ip_whitelist;
             set<string> proxy_target;
+            st::areaip::area_ip_config area_ip_config;
             config() = default;
             static config &uniq();
             void load(const string &configPathInput);
