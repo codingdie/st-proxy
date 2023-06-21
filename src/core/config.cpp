@@ -9,7 +9,7 @@ using namespace st::utils;
 void config::load(const string &configPathInput) {
     base_conf_dir = boost::filesystem::absolute(configPathInput).normalize().string();
     string configPath = configPathInput + "/config.json";
-    if (st::utils::file::exit(configPath)) {
+    if (st::utils::file::exists(configPath)) {
         ptree tree;
         try {
             read_json(configPath, tree);
