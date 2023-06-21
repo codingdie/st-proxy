@@ -115,9 +115,7 @@ stream_tunnel *config::parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const {
         st->proxyAreas.insert(st->proxyAreas.begin(), st->area);
     }
     for (auto &area : st->proxyAreas) {
-        if (!st::areaip::manager::uniq().load_area_ips(area)) {
-            exit(1);
-        }
+        st::areaip::manager::uniq().load_area_ips(area);
     }
 
     boost::optional<basic_ptree<K, D, C> &> whitelistNode = tunnel.get_child_optional("whitelist");
