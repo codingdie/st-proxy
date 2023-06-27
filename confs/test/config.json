@@ -21,7 +21,7 @@
     {
       "type": "SOCKS",
       "ip": "192.168.31.20",
-      "port": 1070,
+      "port": 10060,
       "area": "US",
       "whitelist": [
         "*.google.com"

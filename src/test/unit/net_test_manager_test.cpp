@@ -11,3 +11,12 @@ TEST(proxy_unit_tests, test_net_test_manager) {
     // net_test_manager::uniq().test(ipv4::str_to_ip("172.64.194.32"), 443);
     // std::this_thread::sleep_for(std::chrono::seconds(300));
 }
+
+TEST(proxy_unit_tests, test_net_test_manager_test_with_socks) {
+    st::proxy::config::uniq().load("../confs/test");
+    auto tunnel = st::proxy::config::uniq().tunnels[1];
+    net_test_manager::uniq().tls_handshake_v2_with_socks(
+            tunnel->ip, tunnel->port, "127.0.0.1",
+            [=](bool valid, bool connected, uint32_t cost) { logger::INFO << valid << connected << cost << END; });
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+}
