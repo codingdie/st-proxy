@@ -17,8 +17,9 @@ public:
     st::utils::counters::interval write_counter;
     stream_tunnel *connected_tunnel = nullptr;
     tcp::socket client_sock;
-    string tag;
-    explicit proxy_session(io_context &context, string tag);
+    io_context &ic;
+
+    explicit proxy_session(io_context &context);
 
     virtual ~proxy_session();
 
@@ -54,7 +55,6 @@ private:
     vector<string> dist_hosts;
     std::atomic<STAGE> stage;
     tcp::socket proxy_sock;
-    bool is_net_test() const;
 
     void read_client_max(const string &tag, size_t maxSize, const std::function<void(size_t size)> &completeHandler);
 
@@ -82,7 +82,7 @@ private:
 
     void select_tunnels();
 
-    static void close(tcp::socket &socks, const std::function<void()> &completeHandler);
+    void close(tcp::socket &socks, const std::function<void()> &completeHandler);
 
     void bind_local_port(basic_endpoint<tcp> &endpoint, boost::system::error_code &error);
 

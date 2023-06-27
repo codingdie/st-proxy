@@ -17,21 +17,22 @@ net_test_manager::net_test_manager()
 void net_test_manager::schedule_dispatch_test() {
     ic.post([this]() {
         if (key_count > 0) {
-            apm_logger::perf("st-proxy-net-test-stats", {{}}, {{"heap", test_queue.size()}});
+            apm_logger::perf("st-proxy-net-test-stats", {{}},
+                             {{"heap", test_queue.size()}, {"running_test", running_test}});
             test_case t_case = poll_one_test();
             if (t_case.ip != 0) {
                 running_test++;
+                auto begin = time::now();
                 auto result = quality_analyzer::uniq().select_tunnels(t_case.ip,
                                                                       st::command::dns::reverse_resolve(t_case.ip), "");
-                auto need_test_count = quality_analyzer::uniq().cal_need_test_count(result);
-                if (need_test_count > 0) {
-                    select_tunnels_tesult test_tunnels;
-                    test_tunnels.assign(result.begin(), result.begin() + need_test_count);
-                    logger::DEBUG << "net test begin" << t_case.key() << "count" << need_test_count << END;
-                    test_re(test_tunnels, 0, t_case, need_test_count, [=](uint32_t valid) {
+                auto test_tunnels = quality_analyzer::uniq().cal_need_test_tunnels(result);
+                if (!test_tunnels.empty()) {
+                    logger::DEBUG << "net test begin" << t_case.key() << "count" << test_tunnels.size() << END;
+                    test_all_tunnels(test_tunnels, t_case, [=]() {
+                        apm_logger::perf("st-proxy-net-test", {{}}, time::now() - begin);
                         test_queue.erase(t_case.key());
                         running_test--;
-                        logger::DEBUG << "net test end" << t_case.key() << "valid" << valid << END;
+                        logger::DEBUG << "net test end" << t_case.key() << END;
                     });
                 } else {
                     test_queue.erase(t_case.key());
@@ -88,9 +89,10 @@ void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, 
     uint32_t begin = time::now();
     string logTag = "net test tls handshake v2 with socks: " + socks_ip + ":" + to_string(socks_port) +
                     " target:" + test_ip + ":443";
+    logger::DEBUG << logTag << "start!" << END;
     auto *socket = new tcp::socket(ic);
     tcp::endpoint test_endpoint(make_address_v4(test_ip), 443);
-    proxy_connect(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
+    connect_socks(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
         if (success) {
             auto *timer = new deadline_timer(ic);
             timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
@@ -152,7 +154,7 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
         ic.post([=]() { delete socket; });
     });
     socket->open(tcp::v4());
-    nat_utils::set_mark(1025, *socket);
+    nat_utils::set_mark(1024, *socket);
     auto complete = [=](bool valid, bool connected, uint32_t cost) {
         delete timer;
         callback(valid, connected, cost);
@@ -199,16 +201,39 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
 }
 void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t port,
                                const net_test_callback &callback) {
-    if (port == 443) {
-        if (tunnel->type == "DIRECT") {
-            tls_handshake_v2(dist_ip, callback);
+    net_test_callback complete = [=](bool valid, bool connected, uint32_t cost) {
+        apm_logger::perf("st-proxy-net-test-single", {{}}, cost);
+        callback(valid, connected, cost);
+    };
+    acquire_key([=]() {
+        if (port == 443) {
+            if (tunnel->type == "DIRECT") {
+                tls_handshake_v2(dist_ip, complete);
+            } else {
+                tls_handshake_v2_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), complete);
+            }
+        } else if (port == 80) {
+            complete(false, false, 0);
         } else {
-            tls_handshake_v2_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), callback);
+            complete(false, false, 0);
         }
-    } else if (port == 80) {
-        callback(false, false, 0);
-    } else {
-        callback(false, false, 0);
+    });
+}
+void net_test_manager::test_tunnel(stream_tunnel *tunnel, const test_case &tc, const multi_test_callback &callback) {
+    auto *counter = new atomic_uint16_t(0);
+    for (auto i = 0; i < quality_analyzer::IP_TUNNEL_TEST_COUNT; i++) {
+        do_test(tunnel, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
+            counter->fetch_add(1);
+            if (valid) {
+                quality_analyzer::uniq().record_first_package_success(tc.ip, tunnel, cost);
+            } else {
+                quality_analyzer::uniq().record_failed(tc.ip, tunnel);
+            }
+            if (counter->load() >= quality_analyzer::IP_TUNNEL_TEST_COUNT) {
+                delete counter;
+                callback();
+            }
+        });
     }
 }
 void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net_test_callback &callback) {
@@ -224,7 +249,7 @@ void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net
         ic.post([=]() { delete socket; });
     });
     socket->open(tcp::v4());
-    nat_utils::set_mark(1025, *socket);
+    nat_utils::set_mark(1024, *socket);
     auto complete = [=](bool valid, bool connected, uint32_t cost) {
         delete timer;
         callback(valid, connected, cost);
@@ -283,23 +308,15 @@ void net_test_manager::test(uint32_t dist_ip, uint16_t port, uint16_t priority) 
     }
 }
 
-void net_test_manager::test_re(select_tunnels_tesult result, uint32_t index, const test_case &tc, uint32_t valid_count,
-                               const std::function<void(uint32_t valid)> &callback) {
-    if (index >= result.size()) {
-        callback(valid_count);
-    } else {
-        acquire_key([=]() {
-            auto begin = time::now();
-            stream_tunnel *test_tunnel = result[index].first;
-            do_test(test_tunnel, tc.ip, tc.port, [=](bool valid, bool connected, uint32_t cost) {
-                if (valid) {
-                    quality_analyzer::uniq().record_first_package_success(tc.ip, test_tunnel, cost);
-                } else {
-                    quality_analyzer::uniq().record_failed(tc.ip, test_tunnel);
-                }
-                apm_logger::perf("st-proxy-net-test", {{"test_case", tc.key()}}, time::now() - begin);
-                test_re(result, index + 1, tc, valid_count + (valid ? 1 : 0), callback);
-            });
+void net_test_manager::test_all_tunnels(const vector<stream_tunnel *> &result, const test_case &tc,
+                                        const multi_test_callback &callback) {
+    auto *counter = new atomic_uint16_t(0);
+    for (const auto &tunnel : result) {
+        test_tunnel(tunnel, tc, [=]() {
+            counter->fetch_add(1);
+            if (counter->load() >= result.size()) {
+                callback();
+            }
         });
     }
 }

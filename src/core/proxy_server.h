@@ -34,7 +34,7 @@ private:
     session_manager *manager;
     boost::asio::deadline_timer *schedule_timer;
     st::console::udp_console console;
-    void accept(io_context *context, tcp::acceptor *acceptor, const string &tag);
+    void accept(io_context *context, tcp::acceptor *acceptor);
 
     bool init();
 

@@ -21,9 +21,8 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         auto tunnel_record = get_record(tunnel);
         auto ip_record = get_record(dist_ip);
         auto ip_tunnel_record = get_record(dist_ip, tunnel);
-        bool ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel), ip_tunnel_record, se);
-        ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
+        bool ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
         if (!has_record_ip_failed(dist_ip, tunnel_record) && ip_tunnel_all_failed) {
             se.set_ip(dist_ip);
             add_session_record(tunnel->id(), tunnel_record, se);
@@ -87,11 +86,13 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
 }
 
 st::proxy::proto::quality_record quality_analyzer::get_record(stream_tunnel *tunnel) {
+    auto begin = time::now();
     auto key = tunnel->id();
     quality_record record = get_record(key);
     record.set_queue_limit(TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::TUNNEL);
     process_record(record);
+    apm_logger::perf("st-proxy-get-tunnel-record", {}, time::now() - begin);
     return record;
 }
 
@@ -104,11 +105,13 @@ quality_record quality_analyzer::get_record(uint32_t dist_ip) {
     return record;
 }
 quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tunnel) {
+    auto begin = time::now();
     auto key = build_key(dist_ip, tunnel);
     quality_record record = get_record(key);
     record.set_queue_limit(tunnel->type == "DIRECT" ? IP_TUNNEL_TEST_COUNT * 3 : IP_TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::IP_TUNNEL);
     process_record(record);
+    apm_logger::perf("st-proxy-get-ip-tunnel-record", {}, time::now() - begin);
     return record;
 }
 
@@ -150,8 +153,15 @@ void quality_analyzer::process_record(quality_record &record) {
 }
 
 
-quality_analyzer::~quality_analyzer() = default;
-quality_analyzer::quality_analyzer() : db("st-proxy-quality", 4 * 1024 * 1204), random_engine(time::now()) {
+quality_analyzer::~quality_analyzer() {
+    ic.stop();
+    delete worker;
+    th->join();
+    delete th;
+};
+quality_analyzer::quality_analyzer()
+    : db("st-proxy-quality", 4 * 1024 * 1204), ic(), worker(new boost::asio::io_context::work(ic)),
+      th(new thread([this]() { ic.run(); })) {
     uint32_t ip_count = 0;
     uint32_t record_count = 0;
     db.list([&](const std::string &key, const std::string &value) {
@@ -191,13 +201,7 @@ void quality_analyzer::add_session_record(const string &key, quality_record &rec
     db.put(key, record.SerializeAsString());
     process_record(record);
 }
-void quality_analyzer::execute(std::function<void()> func) {
-    if (ic != nullptr) {
-        ic->post(func);
-    } else {
-        func();
-    }
-}
+void quality_analyzer::execute(std::function<void()> func) { ic.post(func); }
 unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_all_tunnel_record() {
     unordered_map<string, st::proxy::proto::quality_record> result;
     for (const auto &tunnel : proxy::config::uniq().tunnels) {
@@ -257,8 +261,8 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
         if (inArea) {
             score += 10;
         }
-        const auto &ip_tunnel_record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-        const auto &tunnel_record = quality_analyzer::uniq().get_record(tunnel);
+        const auto &ip_tunnel_record = get_record(dist_ip, tunnel);
+        const auto &tunnel_record = get_record(tunnel);
         if (ip_tunnel_record.first_package_success() == 0 && check_all_failed(tunnel_record)) {
             score -= 100;
         }
@@ -270,6 +274,7 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
         }
         tunnels.emplace_back(tunnel, make_pair(score, ip_tunnel_record));
     }
+    apm_logger::perf("st-proxy-select-tunnels-cal-score", {}, time::now() - begin);
     sort(tunnels.begin(), tunnels.end(),
          [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,
              const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &b) {
@@ -296,15 +301,19 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
     apm_logger::perf("st-proxy-select-tunnels", {}, time::now() - begin);
     return tunnels;
 }
-uint16_t quality_analyzer::cal_need_test_count(const select_tunnels_tesult &tunnels) {
-    int need_test_count = 0;
+vector<stream_tunnel *> quality_analyzer::cal_need_test_tunnels(const select_tunnels_tesult &tunnels) {
     int max_score = tunnels[0].second.first;
+    vector<stream_tunnel *> result;
     for (const auto &item : tunnels) {
         if (item.second.first == max_score) {
-            need_test_count += this->need_more_test(item.second.second);
+            if (this->need_more_test(item.second.second)) {
+                result.emplace_back(item.first);
+            }
+        } else {
+            break;
         }
     }
-    return need_test_count;
+    return result;
 }
 bool quality_analyzer::check_all_failed(const quality_record &record) {
     return need_more_test(record) == 0 && record.first_package_success() == 0;
@@ -354,5 +363,3 @@ void quality_analyzer::delete_all_record() {
         db.erase(item->id());
     }
 }
-void quality_analyzer::start(io_context *ic) { this->ic = ic; }
-void quality_analyzer::stop() { this->ic = nullptr; }
