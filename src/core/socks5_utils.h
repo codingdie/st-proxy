@@ -59,7 +59,11 @@ static void proxy_connect(tcp::socket *proxy_sock, const std::string &socks_ip, 
     auto out_buffer = out_buffer_p.first;
     auto in_buffer = out_buffer_p.first;
     auto proxyEnd = tcp::endpoint(make_address(socks_ip), socks_port);
+#if BOOST_VERSION > 107000
     auto *timer = new deadline_timer(proxy_sock->get_executor());
+#else
+    auto *timer = new deadline_timer(proxy_sock->get_io_service());
+#endif
     auto complete = [=](bool success) {
         timer->cancel();
         delete timer;
@@ -72,11 +76,10 @@ static void proxy_connect(tcp::socket *proxy_sock, const std::string &socks_ip, 
             proxy_sock->cancel(ec);
             proxy_sock->close(ec);
         }
-
-        proxy_sock->get_io_context().post([=]() {
+        boost::asio::post(proxy_sock->get_executor(), [=]() {
             st::mem::pfree(out_buffer_p);
             st::mem::pfree(in_buffer_p);
-        });
+        })
     });
 
     proxy_sock->async_connect(proxyEnd, [=](boost::system::error_code error) {
