@@ -79,7 +79,7 @@ static void proxy_connect(tcp::socket *proxy_sock, const std::string &socks_ip, 
         boost::asio::post(proxy_sock->get_executor(), [=]() {
             st::mem::pfree(out_buffer_p);
             st::mem::pfree(in_buffer_p);
-        })
+        });
     });
 
     proxy_sock->async_connect(proxyEnd, [=](boost::system::error_code error) {
