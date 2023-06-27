@@ -59,7 +59,7 @@ static void proxy_connect(tcp::socket *proxy_sock, const std::string &socks_ip, 
     auto out_buffer = out_buffer_p.first;
     auto in_buffer = out_buffer_p.first;
     auto proxyEnd = tcp::endpoint(make_address(socks_ip), socks_port);
-    auto *timer = new deadline_timer(proxy_sock->get_io_service());
+    auto *timer = new deadline_timer(proxy_sock->get_executor().context());
     auto complete = [=](bool success) {
         timer->cancel();
         delete timer;
