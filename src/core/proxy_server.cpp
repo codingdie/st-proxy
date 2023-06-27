@@ -15,7 +15,7 @@ using namespace st::proxy;
 proxy_server::proxy_server()
     : state(0), manager(nullptr), console(config::uniq().console_ip, config::uniq().console_port) {
     unsigned int cpu_count = std::thread::hardware_concurrency();
-    auto worker_num = 2 + std::max(1U, cpu_count * 2) + 1;
+    auto worker_num = 2 + std::max(1U, cpu_count * 2);
     for (auto i = 0; i < worker_num; i++) {
         auto ic = new boost::asio::io_context();
         auto iw = new boost::asio::io_context::work(*ic);
@@ -26,21 +26,16 @@ proxy_server::proxy_server()
         default_acceptor = new ip::tcp::acceptor(
                 *worker_ctxs[0],
                 tcp::endpoint(boost::asio::ip::make_address_v4(config::uniq().ip), st::proxy::config::uniq().port));
-        net_test_acceptor = new ip::tcp::acceptor(
-                *worker_ctxs[1],
-                tcp::endpoint(boost::asio::ip::make_address_v4(config::uniq().ip), st::proxy::config::uniq().port + 1));
+
         boost::asio::ip::tcp::acceptor::keep_alive option(true);
         default_acceptor->set_option(option);
-        net_test_acceptor->set_option(option);
 
         using fastopen = boost::asio::detail::socket_option::integer<IPPROTO_TCP, TCP_FASTOPEN>;
         boost::system::error_code ec;
 #ifdef TCP_FASTOPEN
         default_acceptor->set_option(fastopen(20), ec);
-        net_test_acceptor->set_option(fastopen(20), ec);
 #endif
         default_acceptor->set_option(tcp::no_delay(true));
-        net_test_acceptor->set_option(tcp::no_delay(true));
     } catch (const boost::system::system_error &e) {
         logger::ERROR << "bind address error" << st::proxy::config::uniq().ip << st::proxy::config::uniq().port
                       << e.what() << END;
@@ -177,21 +172,15 @@ void proxy_server::start() {
             ic->run();
         });
     }
-    for (auto i = 2; i < 2 + cpu_count; i++) {
+    for (auto i = 2; i < 2 + 2 * cpu_count; i++) {
         threads.emplace_back([=]() {
             auto ic = worker_ctxs.at(i);
             this->accept(ic, default_acceptor, "default");
             ic->run();
         });
     }
-    for (auto i = 2 + cpu_count; i < 2 + cpu_count * 2; i++) {
-        threads.emplace_back([=]() {
-            auto ic = worker_ctxs.at(i);
-            this->accept(ic, net_test_acceptor, "net_test");
-            ic->run();
-        });
-    }
-    logger::INFO << "st-proxy start with" << worker_ctxs.size() - 3 << "worker, listen at"
+
+    logger::INFO << "st-proxy start with" << worker_ctxs.size() - 2 << "worker, listen at"
                  << st::proxy::config::uniq().ip + ":" + to_string(st::proxy::config::uniq().port) << END;
     this->state = 1;
     for (auto &th : threads) {

@@ -5,7 +5,6 @@
 #include "net_test_manager.h"
 #include "command/dns_command.h"
 #include "nat_utils.h"
-#include "quality_analyzer.h"
 #include <boost/asio/ssl.hpp>
 net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), schedule_timer(ic), generate_key_timer(ic), th([this]() { ic.run(); }) {
@@ -15,7 +14,6 @@ net_test_manager::net_test_manager()
     schedule_dispatch_test();
     schedule_generate_key();
 }
-
 void net_test_manager::schedule_dispatch_test() {
     ic.post([this]() {
         if (key_count > 0) {
@@ -27,8 +25,10 @@ void net_test_manager::schedule_dispatch_test() {
                                                                       st::command::dns::reverse_resolve(t_case.ip), "");
                 auto need_test_count = quality_analyzer::uniq().cal_need_test_count(result);
                 if (need_test_count > 0) {
+                    select_tunnels_tesult test_tunnels;
+                    test_tunnels.assign(result.begin(), result.begin() + need_test_count);
                     logger::DEBUG << "net test begin" << t_case.key() << "count" << need_test_count << END;
-                    test_re(t_case, need_test_count, 0, [=](uint32_t valid) {
+                    test_re(test_tunnels, 0, t_case, need_test_count, [=](uint32_t valid) {
                         test_queue.erase(t_case.key());
                         running_test--;
                         logger::DEBUG << "net test end" << t_case.key() << "valid" << valid << END;
@@ -83,6 +83,61 @@ net_test_manager &net_test_manager::uniq() {
     static net_test_manager instance;
     return instance;
 }
+void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, uint32_t socks_port,
+                                                   const std::string &test_ip, const net_test_callback &callback) {
+    uint32_t begin = time::now();
+    string logTag = "net test tls handshake v2 with socks: " + socks_ip + ":" + to_string(socks_port) +
+                    " target:" + test_ip + ":443";
+    auto *socket = new tcp::socket(ic);
+    tcp::endpoint test_endpoint(make_address_v4(test_ip), 443);
+    proxy_connect(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
+        if (success) {
+            auto *timer = new deadline_timer(ic);
+            timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
+            timer->async_wait([=](boost::system::error_code ec) {
+                socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
+                socket->cancel(ec);
+                socket->close(ec);
+                ic.post([=]() { delete socket; });
+            });
+            auto complete = [=](bool valid, bool connected, uint32_t cost) {
+                timer->cancel();
+                delete timer;
+                callback(valid, connected, cost);
+            };
+            auto send_handler = [=](boost::system::error_code ec, std::size_t length) {
+                if (!ec) {
+                    pair<uint8_t *, uint32_t> data = st::mem::pmalloc(1024);
+                    auto receive_handler = [=](boost::system::error_code ec, std::size_t length) {
+                        auto first = *data.first;
+                        st::mem::pfree(data);
+                        if (!ec) {
+                            logger::DEBUG << logTag << "success!" << first << END;
+                            complete(true, true, time::now() - begin);
+                        } else {
+                            complete(false, true, time::now() - begin);
+                            if (ec != boost::asio::error::operation_aborted) {
+                                logger::WARN << logTag << "receive test response error!"
+                                             << string(ec.category().name()) + "/" + ec.message() << length << END;
+                            }
+                        }
+                    };
+                    socket->async_read_some(buffer(data.first, data.second), receive_handler);
+                } else {
+                    complete(false, true, time::now() - begin);
+                    logger::WARN << logTag << "send test request error!" << ec.category().name() << ec.message()
+                                 << length << END;
+                }
+            };
+            boost::asio::async_write(*socket, buffer(TLS_REQUEST, TLS_REQUEST_LEN),
+                                     boost::asio::transfer_at_least(TLS_REQUEST_LEN), send_handler);
+        } else {
+            delete socket;
+            callback(false, false, time::now() - begin);
+        }
+    });
+}
+
 void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bool, bool, uint32_t)> &callback) {
     string logTag = "net test tls handshake v2" + ipv4::ip_to_str(dist_ip) + ":443";
     tcp::endpoint server_endpoint(make_address_v4(dist_ip), 443);
@@ -138,13 +193,18 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
                                      boost::asio::transfer_at_least(TLS_REQUEST_LEN), send_handler);
         } else {
             logger::WARN << logTag << "connect error!" << ec.message() << END;
-            complete(true, false, time::now() - begin);
+            complete(false, false, time::now() - begin);
         }
     });
 }
-void net_test_manager::do_test(uint32_t dist_ip, uint16_t port, const net_test_callback &callback) {
+void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t port,
+                               const net_test_callback &callback) {
     if (port == 443) {
-        tls_handshake_v2(dist_ip, callback);
+        if (tunnel->type == "DIRECT") {
+            tls_handshake_v2(dist_ip, callback);
+        } else {
+            tls_handshake_v2_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), callback);
+        }
     } else if (port == 80) {
         callback(false, false, 0);
     } else {
@@ -198,7 +258,7 @@ void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net
                                      boost::asio::transfer_at_least(TEST_REQUEST_LEN), send_handler);
         } else {
             logger::WARN << logTag << "connect error!" << ec.message() << END;
-            complete(true, false, time::now() - begin);
+            complete(false, false, time::now() - begin);
         }
     });
 }
@@ -223,16 +283,22 @@ void net_test_manager::test(uint32_t dist_ip, uint16_t port, uint16_t priority) 
     }
 }
 
-void net_test_manager::test_re(const test_case &tc, uint16_t count, uint32_t valid_count,
+void net_test_manager::test_re(select_tunnels_tesult result, uint32_t index, const test_case &tc, uint32_t valid_count,
                                const std::function<void(uint32_t valid)> &callback) {
-    if (count <= 0) {
+    if (index >= result.size()) {
         callback(valid_count);
     } else {
         acquire_key([=]() {
             auto begin = time::now();
-            do_test(tc.ip, tc.port, [=](bool valid, bool connected, uint32_t cost) {
+            stream_tunnel *test_tunnel = result[index].first;
+            do_test(test_tunnel, tc.ip, tc.port, [=](bool valid, bool connected, uint32_t cost) {
+                if (valid) {
+                    quality_analyzer::uniq().record_first_package_success(tc.ip, test_tunnel, cost);
+                } else {
+                    quality_analyzer::uniq().record_failed(tc.ip, test_tunnel);
+                }
                 apm_logger::perf("st-proxy-net-test", {{"test_case", tc.key()}}, time::now() - begin);
-                test_re(tc, count - 1, valid_count + (valid ? 1 : 0), callback);
+                test_re(result, index + 1, tc, valid_count + (valid ? 1 : 0), callback);
             });
         });
     }
