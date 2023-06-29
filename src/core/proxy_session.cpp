@@ -15,9 +15,8 @@
 #include <map>
 #include <utility>
 #include <vector>
-proxy_session::proxy_session(io_context &context, string tag)
-    : read_counter(), write_counter(), client_sock(context), tag(std::move(tag)), stage(STAGE::CONNECTING),
-      proxy_sock(context) {
+proxy_session::proxy_session(io_context &context)
+    : read_counter(), write_counter(), client_sock(context), stage(STAGE::CONNECTING), proxy_sock(context) {
     static std::atomic<uint64_t> id_generator(time::now());
     in_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
     out_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
@@ -110,8 +109,8 @@ void proxy_session::try_connect() {
 void proxy_session::select_tunnels() {
     uint32_t dist_ip = dist_end.address().to_v4().to_uint();
     auto select_result = quality_analyzer::uniq().select_tunnels(dist_ip, dist_hosts, prefer_area);
-    int need_test_count = quality_analyzer::uniq().cal_need_test_count(select_result);
-    if (need_test_count > 0 && !is_net_test()) {
+    auto need_test_tunnels = quality_analyzer::uniq().cal_need_test_tunnels(select_result);
+    if (need_test_tunnels.size() > 0) {
         net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result[0].first->type == "DIRECT" ? 0 : 1);
     }
     for (const auto &it : select_result) {
@@ -264,7 +263,7 @@ void proxy_session::read_proxy() {
         if (read_counter.total() == 0) {
             apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}), first_packet_time);
             if (error) {
-                if (!is_net_test() || dist_end.port() == 80 || dist_end.port() == 443) {
+                if (dist_end.port() == 80 || dist_end.port() == 443) {
                     quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
                 }
                 logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
@@ -378,7 +377,7 @@ proxy_session::~proxy_session() {
 }
 
 string proxy_session::idStr() {
-    return tag + "->" + (prefer_area.empty() ? "" : prefer_area + "->") + asio::addr_str(client_end) + "->" +
+    return (prefer_area.empty() ? "" : prefer_area + "->") + asio::addr_str(client_end) + "->" +
            asio::addr_str(dist_end) + (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
 }
 
@@ -399,9 +398,6 @@ bool proxy_session::nextStage(proxy_session::STAGE nextStage) {
 }
 bool proxy_session::is_transmitting() {
     uint64_t soTimeout = st::proxy::config::uniq().so_timeout;
-    if (is_net_test()) {
-        soTimeout = 3000L;
-    }
     auto now = time::now();
     bool noWrite = !write_counter.is_start() ? (now - begin >= soTimeout)
                                              : (now - write_counter.get_last_record_time() >= soTimeout);
@@ -426,11 +422,9 @@ unordered_map<string, string> proxy_session::dimensions(unordered_map<string, st
                                             {"client_ip", client_end.address().to_string()},
                                             {"dist_host", dist_hosts[0]},
                                             {"dist_area", dist_area},
-                                            {"tag", tag},
                                             {"prefer_area", prefer_area},
                                             {"dist_ip", dist_end.address().to_string()},
                                             {"dist_end_port", to_string(dist_end.port())}};
     result.insert(dimensions.begin(), dimensions.end());
     return result;
 }
-bool proxy_session::is_net_test() const { return "net_test" == tag; }

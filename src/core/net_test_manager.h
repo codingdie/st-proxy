@@ -10,6 +10,7 @@
 #include "socks5_utils.h"
 #include <functional>
 #define net_test_callback std::function<void(bool valid, bool connected, uint32_t cost)>
+#define multi_test_callback std::function<void()>
 
 class test_case {
 public:
@@ -63,9 +64,9 @@ private:
     std::unordered_map<string, test_case> test_queue;
     thread th;
     void do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
-
-    void test_re(select_tunnels_tesult result, uint32_t index, const test_case &tc, uint32_t valid_count,
-                 const std::function<void(uint32_t valid)> &callback);
+    void test_tunnel(stream_tunnel *tunnel, const test_case &tc, const multi_test_callback &callback);
+    void test_all_tunnels(const vector<stream_tunnel *> &result, const test_case &tc,
+                          const multi_test_callback &callback);
     test_case poll_one_test();
 };
 

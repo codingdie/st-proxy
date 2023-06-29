@@ -296,15 +296,19 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
     apm_logger::perf("st-proxy-select-tunnels", {}, time::now() - begin);
     return tunnels;
 }
-uint16_t quality_analyzer::cal_need_test_count(const select_tunnels_tesult &tunnels) {
-    int need_test_count = 0;
+vector<stream_tunnel *> quality_analyzer::cal_need_test_tunnels(const select_tunnels_tesult &tunnels) {
     int max_score = tunnels[0].second.first;
+    vector<stream_tunnel *> result;
     for (const auto &item : tunnels) {
         if (item.second.first == max_score) {
-            need_test_count += this->need_more_test(item.second.second);
+            if (this->need_more_test(item.second.second)) {
+                result.emplace_back(item.first);
+            }
+        } else {
+            break;
         }
     }
-    return need_test_count;
+    return result;
 }
 bool quality_analyzer::check_all_failed(const quality_record &record) {
     return need_more_test(record) == 0 && record.first_package_success() == 0;

@@ -175,7 +175,7 @@ void proxy_server::start() {
     for (auto i = 2; i < 2 + 2 * cpu_count; i++) {
         threads.emplace_back([=]() {
             auto ic = worker_ctxs.at(i);
-            this->accept(ic, default_acceptor, "default");
+            this->accept(ic, default_acceptor);
             ic->run();
         });
     }
@@ -210,8 +210,8 @@ void proxy_server::wait_start() {
     }
     cout << state << endl;
 }
-void proxy_server::accept(io_context *context, tcp::acceptor *acceptor, const string &tag) {
-    auto *session = new proxy_session(*context, tag);
+void proxy_server::accept(io_context *context, tcp::acceptor *acceptor) {
+    auto *session = new proxy_session(*context);
     acceptor->async_accept(session->client_sock, [=](const boost::system::error_code &error) {
         if (!acceptor->is_open() || state == 2) {
             delete session;
@@ -222,7 +222,7 @@ void proxy_server::accept(io_context *context, tcp::acceptor *acceptor, const st
         } else {
             delete session;
         }
-        this->accept(context, acceptor, tag);
+        this->accept(context, acceptor);
     });
 }
 
