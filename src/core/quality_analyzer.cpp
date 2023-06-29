@@ -269,6 +269,7 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
         }
         tunnels.emplace_back(tunnel, make_pair(score, ip_tunnel_record));
     }
+    apm_logger::perf("st-proxy-select-tunnels-cal-score", {}, time::now() - begin);
     sort(tunnels.begin(), tunnels.end(),
          [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,
              const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &b) {
