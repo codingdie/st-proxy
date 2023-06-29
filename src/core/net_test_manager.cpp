@@ -17,16 +17,19 @@ net_test_manager::net_test_manager()
 void net_test_manager::schedule_dispatch_test() {
     ic.post([this]() {
         if (key_count > 0) {
-            apm_logger::perf("st-proxy-net-test-stats", {{}}, {{"heap", test_queue.size()}});
+            apm_logger::perf("st-proxy-net-test-stats", {{}},
+                             {{"heap", test_queue.size()}, {"running_test", running_test}});
             test_case t_case = poll_one_test();
             if (t_case.ip != 0) {
                 running_test++;
+                auto begin = time::now();
                 auto result = quality_analyzer::uniq().select_tunnels(t_case.ip,
                                                                       st::command::dns::reverse_resolve(t_case.ip), "");
                 auto test_tunnels = quality_analyzer::uniq().cal_need_test_tunnels(result);
                 if (!test_tunnels.empty()) {
                     logger::DEBUG << "net test begin" << t_case.key() << "count" << test_tunnels.size() << END;
                     test_all_tunnels(test_tunnels, t_case, [=]() {
+                        apm_logger::perf("st-proxy-net-test", {{}}, time::now() - begin);
                         test_queue.erase(t_case.key());
                         running_test--;
                         logger::DEBUG << "net test end" << t_case.key() << END;
