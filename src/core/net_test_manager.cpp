@@ -86,6 +86,7 @@ void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, 
     uint32_t begin = time::now();
     string logTag = "net test tls handshake v2 with socks: " + socks_ip + ":" + to_string(socks_port) +
                     " target:" + test_ip + ":443";
+    logger::DEBUG << logTag << "start!" << END;
     auto *socket = new tcp::socket(ic);
     tcp::endpoint test_endpoint(make_address_v4(test_ip), 443);
     connect_socks(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
