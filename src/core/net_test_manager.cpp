@@ -88,7 +88,7 @@ void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, 
                     " target:" + test_ip + ":443";
     auto *socket = new tcp::socket(ic);
     tcp::endpoint test_endpoint(make_address_v4(test_ip), 443);
-    proxy_connect(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
+    connect_socks(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
         if (success) {
             auto *timer = new deadline_timer(ic);
             timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));

@@ -300,8 +300,6 @@ void proxy_session::process_error(const boost::system::error_code &error, const 
 }
 void proxy_session::close(tcp::socket &socks, const std::function<void()> &completeHandler) {
     io_context &ctx = (io_context &) socks.get_executor().context();
-    boost::system::error_code ec;
-    socks.shutdown(boost::asio::socket_base::shutdown_both, ec);
     ctx.post([=, &socks]() {
         boost::system::error_code ec;
         socks.shutdown(boost::asio::socket_base::shutdown_both, ec);

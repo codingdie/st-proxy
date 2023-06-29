@@ -21,9 +21,8 @@ void quality_analyzer::record_failed(uint32_t dist_ip, stream_tunnel *tunnel) {
         auto tunnel_record = get_record(tunnel);
         auto ip_record = get_record(dist_ip);
         auto ip_tunnel_record = get_record(dist_ip, tunnel);
-        bool ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel), ip_tunnel_record, se);
-        ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
+        bool ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
         if (!has_record_ip_failed(dist_ip, tunnel_record) && ip_tunnel_all_failed) {
             se.set_ip(dist_ip);
             add_session_record(tunnel->id(), tunnel_record, se);
