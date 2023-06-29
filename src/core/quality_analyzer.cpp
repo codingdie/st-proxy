@@ -256,8 +256,8 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
         if (inArea) {
             score += 10;
         }
-        const auto &ip_tunnel_record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
-        const auto &tunnel_record = quality_analyzer::uniq().get_record(tunnel);
+        const auto &ip_tunnel_record = get_record(dist_ip, tunnel);
+        const auto &tunnel_record = get_record(tunnel);
         if (ip_tunnel_record.first_package_success() == 0 && check_all_failed(tunnel_record)) {
             score -= 100;
         }
