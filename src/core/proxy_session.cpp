@@ -301,14 +301,16 @@ void proxy_session::process_error(const boost::system::error_code &error, const 
 }
 void proxy_session::close(tcp::socket &socks, const std::function<void()> &completeHandler) {
     ic.post([=, &socks]() {
-        boost::system::error_code ec;
-        socks.shutdown(boost::asio::socket_base::shutdown_both, ec);
-        socks.cancel(ec);
-        ic.post([=, &socks]() {
+        if (socks.is_open()) {
             boost::system::error_code ec;
-            socks.close(ec);
-            completeHandler();
-        });
+            socks.shutdown(boost::asio::socket_base::shutdown_both, ec);
+            socks.cancel(ec);
+            ic.post([=, &socks]() {
+                boost::system::error_code ec;
+                socks.close(ec);
+                completeHandler();
+            });
+        }
     });
 }
 
