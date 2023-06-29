@@ -51,8 +51,8 @@ private:
     void acquire_key(const std::function<void()> &callback);
     static const int TEST_REQUEST_LEN = 1024;
     static const int TEST_TIME_OUT = 3000;
-    static const int TEST_QPS = 3;
-    static const int TEST_CONCURENT = 3;
+    static const int TEST_QPS = 30;
+    static const int TEST_CONCURENT = 10;
     byte test_request[TEST_REQUEST_LEN]{};
     io_context ic;
     volatile double key_count = 0;
