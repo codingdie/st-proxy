@@ -16,7 +16,8 @@
 #include <utility>
 #include <vector>
 proxy_session::proxy_session(io_context &context)
-    : read_counter(), write_counter(), client_sock(context), stage(STAGE::CONNECTING), proxy_sock(context) {
+    : read_counter(), write_counter(), client_sock(context), stage(STAGE::CONNECTING), proxy_sock(context),
+      ic(context) {
     static std::atomic<uint64_t> id_generator(time::now());
     in_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
     out_buffer = st::mem::pmalloc(PROXY_BUFFER_SIZE).first;
@@ -299,20 +300,24 @@ void proxy_session::process_error(const boost::system::error_code &error, const 
     shutdown();
 }
 void proxy_session::close(tcp::socket &socks, const std::function<void()> &completeHandler) {
-    io_context &ctx = (io_context &) socks.get_executor().context();
-    ctx.post([=, &socks]() {
+    ic.post([=, &socks]() {
         boost::system::error_code ec;
         socks.shutdown(boost::asio::socket_base::shutdown_both, ec);
         socks.cancel(ec);
-        socks.close(ec);
-        completeHandler();
+        ic.post([=, &socks]() {
+            boost::system::error_code ec;
+            socks.close(ec);
+            completeHandler();
+        });
     });
 }
 
 void proxy_session::shutdown() {
-    if (nextStage(DESTROYING)) {
-        close(client_sock, [=] { close(proxy_sock, [=] { nextStage(DESTROYED); }); });
-    }
+    ic.post([=]() {
+        if (nextStage(DESTROYING)) {
+            close(client_sock, [=] { close(proxy_sock, [=] { nextStage(DESTROYED); }); });
+        }
+    });
 }
 void proxy_session::write_proxy(size_t writeSize) {
     write_proxy("write_proxy", writeSize, [=]() { read_client(); });

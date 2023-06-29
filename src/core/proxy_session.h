@@ -17,6 +17,7 @@ public:
     st::utils::counters::interval write_counter;
     stream_tunnel *connected_tunnel = nullptr;
     tcp::socket client_sock;
+    io_context &ic;
 
     explicit proxy_session(io_context &context);
 
@@ -81,7 +82,7 @@ private:
 
     void select_tunnels();
 
-    static void close(tcp::socket &socks, const std::function<void()> &completeHandler);
+    void close(tcp::socket &socks, const std::function<void()> &completeHandler);
 
     void bind_local_port(basic_endpoint<tcp> &endpoint, boost::system::error_code &error);
 
