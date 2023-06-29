@@ -86,11 +86,13 @@ void quality_analyzer::add_session_record(quality_record &record, const session_
 }
 
 st::proxy::proto::quality_record quality_analyzer::get_record(stream_tunnel *tunnel) {
+    auto begin = time::now();
     auto key = tunnel->id();
     quality_record record = get_record(key);
     record.set_queue_limit(TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::TUNNEL);
     process_record(record);
+    apm_logger::perf("st-proxy-get-tunnel-record", {}, time::now() - begin);
     return record;
 }
 
@@ -103,11 +105,13 @@ quality_record quality_analyzer::get_record(uint32_t dist_ip) {
     return record;
 }
 quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tunnel) {
+    auto begin = time::now();
     auto key = build_key(dist_ip, tunnel);
     quality_record record = get_record(key);
     record.set_queue_limit(tunnel->type == "DIRECT" ? IP_TUNNEL_TEST_COUNT * 3 : IP_TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::IP_TUNNEL);
     process_record(record);
+    apm_logger::perf("st-proxy-get-ip-tunnel-record", {}, time::now() - begin);
     return record;
 }
 
