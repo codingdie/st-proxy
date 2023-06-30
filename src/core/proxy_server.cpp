@@ -24,7 +24,7 @@ proxy_server::proxy_server()
     }
     try {
         default_acceptor = new ip::tcp::acceptor(
-                *worker_ctxs[0],
+                *worker_ctxs[1],
                 tcp::endpoint(boost::asio::ip::make_address_v4(config::uniq().ip), st::proxy::config::uniq().port));
 
         boost::asio::ip::tcp::acceptor::keep_alive option(true);
@@ -160,12 +160,19 @@ void proxy_server::start() {
     }
     vector<thread> threads;
     unsigned int cpu_count = std::thread::hardware_concurrency();
+    threads.reserve(2 + 2 * cpu_count);
     for (auto i = 0; i < 2; i++) {
         threads.emplace_back([=]() {
             auto ic = worker_ctxs.at(i);
             ic->run();
         });
     }
+    io_context *schedule_ic = worker_ctxs.at(0);
+    schedule_timer = new deadline_timer(*schedule_ic);
+    manager = new session_manager(schedule_ic);
+    quality_analyzer::uniq().start(schedule_ic);
+    schedule();
+
     for (auto i = 2; i < 2 + 2 * cpu_count; i++) {
         threads.emplace_back([=]() {
             auto ic = worker_ctxs.at(i);
@@ -173,11 +180,7 @@ void proxy_server::start() {
             ic->run();
         });
     }
-    io_context *schedule_ic = worker_ctxs.at(1);
-    manager = new session_manager(schedule_ic);
-    schedule_timer = new deadline_timer(*schedule_ic);
-    quality_analyzer::uniq().start(schedule_ic);
-    schedule();
+
     logger::INFO << "st-proxy start with" << worker_ctxs.size() - 2 << "worker, listen at"
                  << st::proxy::config::uniq().ip + ":" + to_string(st::proxy::config::uniq().port) << END;
     this->state = 1;
