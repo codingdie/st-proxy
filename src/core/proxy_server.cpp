@@ -159,11 +159,6 @@ void proxy_server::start() {
         return;
     }
     vector<thread> threads;
-    io_context *schedule_ic = worker_ctxs.at(1);
-    quality_analyzer::uniq().start(schedule_ic);
-    manager = new session_manager(schedule_ic);
-    schedule_timer = new deadline_timer(*schedule_ic);
-    schedule();
     unsigned int cpu_count = std::thread::hardware_concurrency();
     for (auto i = 0; i < 2; i++) {
         threads.emplace_back([=]() {
@@ -178,7 +173,11 @@ void proxy_server::start() {
             ic->run();
         });
     }
-
+    io_context *schedule_ic = worker_ctxs.at(1);
+    manager = new session_manager(schedule_ic);
+    schedule_timer = new deadline_timer(*schedule_ic);
+    quality_analyzer::uniq().start(schedule_ic);
+    schedule();
     logger::INFO << "st-proxy start with" << worker_ctxs.size() - 2 << "worker, listen at"
                  << st::proxy::config::uniq().ip + ":" + to_string(st::proxy::config::uniq().port) << END;
     this->state = 1;
