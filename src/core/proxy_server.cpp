@@ -160,7 +160,6 @@ void proxy_server::start() {
     }
     vector<thread> threads;
     io_context *schedule_ic = worker_ctxs.at(1);
-    threads.emplace_back([=]() { schedule_ic->run(); });
     quality_analyzer::uniq().start(schedule_ic);
     manager = new session_manager(schedule_ic);
     schedule_timer = new deadline_timer(*schedule_ic);
