@@ -201,17 +201,21 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
 }
 void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t port,
                                const net_test_callback &callback) {
+    net_test_callback complete = [=](bool valid, bool connected, uint32_t cost) {
+        apm_logger::perf("st-proxy-net-test-single", {{}}, cost);
+        callback(valid, connected, cost);
+    };
     acquire_key([=]() {
         if (port == 443) {
             if (tunnel->type == "DIRECT") {
-                tls_handshake_v2(dist_ip, callback);
+                tls_handshake_v2(dist_ip, complete);
             } else {
-                tls_handshake_v2_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), callback);
+                tls_handshake_v2_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), complete);
             }
         } else if (port == 80) {
-            callback(false, false, 0);
+            complete(false, false, 0);
         } else {
-            callback(false, false, 0);
+            complete(false, false, 0);
         }
     });
 }

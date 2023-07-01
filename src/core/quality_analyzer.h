@@ -45,13 +45,11 @@ public:
 
     void delete_all_record();
 
-    void start(io_context *ic);
-    void stop();
-
 private:
     st::kv::disk_kv db;
-    io_context *ic = nullptr;
-    std::default_random_engine random_engine;
+    io_context ic;
+    io_context::work *worker;
+    std::thread *th;
     static string build_key(uint32_t dist_ip, stream_tunnel *tunnel);
     static string build_key(uint32_t dist_ip);
     void add_session_record(const string &key, st::proxy::proto::quality_record &record,

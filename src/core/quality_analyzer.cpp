@@ -153,8 +153,15 @@ void quality_analyzer::process_record(quality_record &record) {
 }
 
 
-quality_analyzer::~quality_analyzer() = default;
-quality_analyzer::quality_analyzer() : db("st-proxy-quality", 4 * 1024 * 1204), random_engine(time::now()) {
+quality_analyzer::~quality_analyzer() {
+    ic.stop();
+    delete worker;
+    th->join();
+    delete th;
+};
+quality_analyzer::quality_analyzer()
+    : db("st-proxy-quality", 4 * 1024 * 1204), ic(), worker(new boost::asio::io_context::work(ic)),
+      th(new thread([this]() { ic.run(); })) {
     uint32_t ip_count = 0;
     uint32_t record_count = 0;
     db.list([&](const std::string &key, const std::string &value) {
@@ -194,13 +201,7 @@ void quality_analyzer::add_session_record(const string &key, quality_record &rec
     db.put(key, record.SerializeAsString());
     process_record(record);
 }
-void quality_analyzer::execute(std::function<void()> func) {
-    if (ic != nullptr) {
-        ic->post(func);
-    } else {
-        func();
-    }
-}
+void quality_analyzer::execute(std::function<void()> func) { ic.post(func); }
 unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_all_tunnel_record() {
     unordered_map<string, st::proxy::proto::quality_record> result;
     for (const auto &tunnel : proxy::config::uniq().tunnels) {
@@ -362,5 +363,3 @@ void quality_analyzer::delete_all_record() {
         db.erase(item->id());
     }
 }
-void quality_analyzer::start(io_context *ic) { this->ic = ic; }
-void quality_analyzer::stop() { this->ic = nullptr; }

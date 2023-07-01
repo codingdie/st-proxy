@@ -170,7 +170,6 @@ void proxy_server::start() {
     io_context *schedule_ic = worker_ctxs.at(0);
     schedule_timer = new deadline_timer(*schedule_ic);
     manager = new session_manager(schedule_ic);
-    quality_analyzer::uniq().start(schedule_ic);
     schedule();
 
     for (auto i = 2; i < 2 + 2 * cpu_count; i++) {
@@ -188,7 +187,6 @@ void proxy_server::start() {
         th.join();
     }
     delete manager;
-    quality_analyzer::uniq().stop();
     logger::INFO << "st-proxy server stopped" << END;
 }
 void proxy_server::shutdown() {
