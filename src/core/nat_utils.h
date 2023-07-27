@@ -34,7 +34,7 @@ public:
 
     tcp::endpoint getProxyAddr(tcp::socket &socket);
 
-    bool addToWhitelist(uint32_t ips);
+    bool add_whitelist_ip(uint32_t ips);
 
     bool addTestDomain(string domain);
     bool addTestIP(uint32_t ip);
