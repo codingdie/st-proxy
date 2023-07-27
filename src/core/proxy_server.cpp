@@ -95,6 +95,7 @@ void proxy_server::config_console() {
         } else if (command == "proxy register area virtual port") {
             if (ip > 0 && port > 0 && !area.empty()) {
                 uint16_t virtual_port = virtual_port_manager::uniq().register_area_virtual_port(ip, port, area);
+                nat_utils::INSTANCE.addToWhitelist(ip);
                 return make_pair(true, to_string(virtual_port));
             }
         }
