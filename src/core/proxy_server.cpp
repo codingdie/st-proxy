@@ -95,7 +95,6 @@ void proxy_server::config_console() {
         } else if (command == "proxy register area virtual port") {
             if (ip > 0 && port > 0 && !area.empty()) {
                 uint16_t virtual_port = virtual_port_manager::uniq().register_area_virtual_port(ip, port, area);
-                nat_utils::INSTANCE.addToWhitelist(ip);
                 return make_pair(true, to_string(virtual_port));
             }
         }
@@ -119,7 +118,7 @@ bool proxy_server::init() {
 
 bool proxy_server::add_nat_whitelist() {
     for (auto ip : st::proxy::config::uniq().ip_whitelist) {
-        if (!nat_utils::INSTANCE.addToWhitelist(ip)) {
+        if (!nat_utils::INSTANCE.add_whitelist_ip(ip)) {
             return false;
         }
         logger::INFO << "add nat whitelist" << ipv4::ip_to_str(ip) << END;

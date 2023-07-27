@@ -3,7 +3,7 @@
 //
 
 #include "virtual_port_manager.h"
-
+#include "nat_utils.h"
 uint16_t virtual_port_manager::get_virtual_port_begin() {
     uint16_t virtual_port_begin = 60000;
     const char *env = getenv("ST_PROXY_VIRTUAL_PORT_BEGIN");
@@ -40,6 +40,7 @@ uint16_t virtual_port_manager::register_area_virtual_port(uint32_t ip, uint16_t 
         auto o_ip = utils::ipv4::str_to_ip(splits[0]);
         if (o_ip == ip) {
             if (item.second.first == area && item.second.second == port) {
+                nat_utils::INSTANCE.add_whitelist_ip(ip);
                 return o_port;
             } else {
                 issued_port = max(issued_port, o_port);
