@@ -19,8 +19,6 @@ if [ "$1" != "clean" ]; then
 
   # Anything else should be redirected to st-proxy's local port
   iptables -t nat -A st-proxy -p tcp -m mark --mark 1024 -j RETURN
-  iptables -t nat -A st-proxy -p tcp -m mark --mark 1025 -j REDIRECT --to-ports 40001
-
   iptables -t nat -A st-proxy -p tcp -m set --match-set st-proxy-test dst -j REDIRECT --to-ports 40000
   # Apply the rules
   iptables -t nat -A OUTPUT -p tcp -j st-proxy
