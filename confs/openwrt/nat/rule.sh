@@ -19,7 +19,7 @@ if [ "$1" != "clean" ]; then
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j RETURN
   # 1026 强制proxy
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1026 -j REDIRECT --to-ports 40000
-  iptables -t nat -A st-proxy -m set --match-set st-proxy-list dst -j  REDIRECT --to-ports 40000
+  iptables -t nat -A st-proxy -p tcp -m set --match-set st-proxy-list dst -j  REDIRECT --to-ports 40000
 
   # 端口b
   if [ "$2" != "" ]; then
