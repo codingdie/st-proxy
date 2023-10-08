@@ -44,10 +44,12 @@ void proxy_session::start() {
     if (dist_hosts.empty()) {
         dist_hosts.emplace_back(dist_end.address().to_v4().to_string());
     }
-    auto realDistPort =
+    auto real_dist_port =
             virtual_port_manager::uniq().get_real_port(dist_end.address().to_v4().to_uint(), dist_end.port());
-    this->dist_end = tcp::endpoint(make_address_v4(this->dist_end.address().to_v4().to_string()), realDistPort.second);
-    this->prefer_area = realDistPort.first;
+    logger::DEBUG << "real_dist_port" << real_dist_port.first << real_dist_port.second << dist_end.port() << END;
+    this->dist_end =
+            tcp::endpoint(make_address_v4(this->dist_end.address().to_v4().to_string()), real_dist_port.second);
+    this->prefer_area = real_dist_port.first;
     this->dist_area = st::areaip::manager::uniq().get_area(this->dist_end.address().to_v4().to_uint());
     if (this->dist_area == "default") {
         logger::WARN << "ip" << st::utils::ipv4::ip_to_str(this->dist_end.address().to_v4().to_uint())
