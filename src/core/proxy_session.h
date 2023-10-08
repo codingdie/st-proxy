@@ -48,6 +48,7 @@ private:
     mutex stageLock;
     uint64_t try_connect_index = 0;
     uint64_t begin = 0;
+    uint64_t v_port = 0;
     string prefer_area;
     string dist_area;
     tcp::endpoint dist_end;

@@ -1,6 +1,7 @@
 ulimit -n 65000
 if [ "$1" != "clean" ]; then
   ipset create -! st-proxy-whitelist hash:net
+  ipset create -! st-proxy-list hash:net
   ipset add -! st-proxy-whitelist 10.0.0.0/8
   ipset add -! st-proxy-whitelist 127.0.0.0/8
   ipset add -! st-proxy-whitelist 169.254.0.0/16
@@ -18,7 +19,7 @@ if [ "$1" != "clean" ]; then
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1024 -j RETURN
   # 1026 强制proxy
   iptables -t nat -A st-proxy -p tcp  -m mark --mark 1026 -j REDIRECT --to-ports 40000
-  iptables -t nat -A st-proxy -m set --match-set st-proxy-list dst -j REDIRECT --to-ports 40000
+  iptables -t nat -A st-proxy -p tcp -m set --match-set st-proxy-list dst -j  REDIRECT --to-ports 40000
 
   # 端口b
   if [ "$2" != "" ]; then
@@ -31,11 +32,14 @@ if [ "$1" != "clean" ]; then
   iptables -t nat -A PREROUTING -p tcp -j st-proxy
   iptables -t nat -L
   ipset list st-proxy-whitelist
+  ipset list st-proxy-list
 else
   iptables -t nat -F st-proxy
   iptables -t nat -D OUTPUT -p tcp -j st-proxy
   iptables -t nat -D PREROUTING -p tcp -j st-proxy
   iptables -t nat -L
   ipset flush -! st-proxy-whitelist
+  ipset flush -! st-proxy-list
   ipset create -! st-proxy-whitelist hash:net
+  ipset create -! st-proxy-list hash:net
 fi
