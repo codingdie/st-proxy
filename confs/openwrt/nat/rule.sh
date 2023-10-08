@@ -32,11 +32,14 @@ if [ "$1" != "clean" ]; then
   iptables -t nat -A PREROUTING -p tcp -j st-proxy
   iptables -t nat -L
   ipset list st-proxy-whitelist
+  ipset list st-proxy-list
 else
   iptables -t nat -F st-proxy
   iptables -t nat -D OUTPUT -p tcp -j st-proxy
   iptables -t nat -D PREROUTING -p tcp -j st-proxy
   iptables -t nat -L
   ipset flush -! st-proxy-whitelist
+  ipset flush -! st-proxy-list
   ipset create -! st-proxy-whitelist hash:net
+  ipset create -! st-proxy-list hash:net
 fi
