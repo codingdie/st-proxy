@@ -46,7 +46,9 @@ void proxy_session::start() {
     }
     auto real_dist_port =
             virtual_port_manager::uniq().get_real_port(dist_end.address().to_v4().to_uint(), dist_end.port());
-    logger::DEBUG << "real_dist_port" << real_dist_port.first << real_dist_port.second << dist_end.port() << END;
+    if (!real_dist_port.first.empty()) {
+        this->v_port = dist_end.port();
+    }
     this->dist_end =
             tcp::endpoint(make_address_v4(this->dist_end.address().to_v4().to_string()), real_dist_port.second);
     this->prefer_area = real_dist_port.first;
@@ -385,7 +387,8 @@ proxy_session::~proxy_session() {
 
 string proxy_session::idStr() {
     return (prefer_area.empty() ? "" : prefer_area + "->") + asio::addr_str(client_end) + "->" +
-           asio::addr_str(dist_end) + (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
+           asio::addr_str(dist_end) + (this->v_port != 0 ? "/" + to_string(this->v_port) : "") +
+           (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
 }
 
 string proxy_session::transmit_log() const {
