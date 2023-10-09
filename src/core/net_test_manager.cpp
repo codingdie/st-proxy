@@ -11,6 +11,8 @@ net_test_manager::net_test_manager()
     for (byte &i : test_request) {
         i = 0b00000000;
     }
+    tls_request = new byte[1024];
+    tls_request_len = st::utils::base64::decode(TLS_REQUEST_BASE64, tls_request);
     schedule_dispatch_test();
     schedule_generate_key();
 }
@@ -79,6 +81,7 @@ net_test_manager::~net_test_manager() {
     ic.stop();
     delete iw;
     th.join();
+    delete tls_request;
 }
 net_test_manager &net_test_manager::uniq() {
     static net_test_manager instance;
@@ -114,25 +117,26 @@ void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, 
                         auto first = *data.first;
                         st::mem::pfree(data);
                         if (!ec) {
-                            logger::DEBUG << logTag << "success!" << first << END;
+                            logger::INFO << logTag << "success!" << first << END;
                             complete(true, true, time::now() - begin);
                         } else {
-                            complete(false, true, time::now() - begin);
                             if (ec != boost::asio::error::operation_aborted) {
-                                logger::WARN << logTag << "receive test response error!"
-                                             << string(ec.category().name()) + "/" + ec.message() << length << END;
+                                logger::ERROR << logTag << "receive test response error!"
+                                              << string(ec.category().name()) + "/" + ec.message() << length << END;
                             }
+                            complete(false, true, time::now() - begin);
                         }
                     };
-                    socket->async_read_some(buffer(data.first, data.second), receive_handler);
+                    socket->async_receive(buffer(data.first, 1), receive_handler);
                 } else {
                     complete(false, true, time::now() - begin);
                     logger::WARN << logTag << "send test request error!" << ec.category().name() << ec.message()
                                  << length << END;
                 }
             };
-            boost::asio::async_write(*socket, buffer(TLS_REQUEST, TLS_REQUEST_LEN),
-                                     boost::asio::transfer_at_least(TLS_REQUEST_LEN), send_handler);
+            reset_tls_session_id();
+            boost::asio::async_write(*socket, buffer(tls_request, tls_request_len),
+                                     boost::asio::transfer_at_least(tls_request_len), send_handler);
         } else {
             delete socket;
             callback(false, false, time::now() - begin);
@@ -191,8 +195,8 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
                                  << length << END;
                 }
             };
-            boost::asio::async_write(*socket, buffer(TLS_REQUEST, TLS_REQUEST_LEN),
-                                     boost::asio::transfer_at_least(TLS_REQUEST_LEN), send_handler);
+            boost::asio::async_write(*socket, buffer(tls_request, tls_request_len),
+                                     boost::asio::transfer_at_least(tls_request_len), send_handler);
         } else {
             logger::WARN << logTag << "connect error!" << ec.message() << END;
             complete(false, false, time::now() - begin);
@@ -331,6 +335,14 @@ void net_test_manager::acquire_key(const function<void()> &callback) {
             delete timer;
             acquire_key(callback);
         });
+    }
+}
+void net_test_manager::reset_tls_session_id() {
+    std::random_device rd;
+    std::default_random_engine gen = std::default_random_engine(rd());
+    std::uniform_int_distribution<int> dis(0, 255);
+    for (auto i = 0; i < 32; i++) {
+        tls_request[44 + i] = dis(gen);
     }
 }
 test_case::test_case(uint32_t ip, uint16_t port) : ip(ip), port(port), status(0), timestamp(time::now()) {}

@@ -3,13 +3,16 @@
 //
 #include "net_test_manager.h"
 #include <gtest/gtest.h>
-TEST(proxy_unit_tests, test_net_test_manager) {
-    // logger::LEVEL = 0;
-    // st::proxy::config::uniq().load("../confs/test");
-    // net_test_manager::uniq().test(ipv4::str_to_ip("142.250.204.36"), 443);
-    // net_test_manager::uniq().test(ipv4::str_to_ip("172.64.195.32"), 443);
-    // net_test_manager::uniq().test(ipv4::str_to_ip("172.64.194.32"), 443);
-    // std::this_thread::sleep_for(std::chrono::seconds(300));
+TEST(proxy_unit_tests, test_tls_handshake_v2_with_socks) {
+    mutex lock;
+    lock.lock();
+    net_test_manager::uniq().tls_handshake_v2_with_socks("192.168.31.20", 10044, "142.250.204.68",
+                                                         [=, &lock](bool valid, bool connected, uint32_t cost) {
+                                                             logger::INFO << valid << connected << cost << END;
+                                                             lock.unlock();
+                                                         });
+    lock.lock();
+    lock.unlock();
 }
 
 TEST(proxy_unit_tests, test_net_test_manager_test_with_socks) {

@@ -40,12 +40,9 @@ public:
     void random_package(uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
 
 private:
-    static const int TLS_REQUEST_LEN = 517;
-    const char TLS_REQUEST[TLS_REQUEST_LEN + 1] =
-            ".... . .....c..q...%........7.:....].)....0 ^4\". ...A ...D..R..es..U.P..>.`>  "
-            ".........+./.,.0........ . . / 5. ..ZZ     . .  .000.000000.000 .  .. . ... . . . . ..  #   "
-            ". .  .h2.http/1.1 . .. . ................. .   3 + ).. .  .  "
-            ".`Z..^...8@e...>g..'.'...f.l.._B - ... + ........ . .. .Di . ..h2jj .  . .";
+
+    const string TLS_REQUEST_BASE64 =
+            "FgMBAgABAAH8AwP3ahaW4vzdplXY2naKY77SC+CkSDclrkS+yf4WO756iSABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQAgmpoTARMCEwPAK8AvwCzAMMypzKjAE8AUAJwAnQAvADUBAAGTKioAAAAXAAAAIwCge3TRCqH+psnWX7Rq18kTwm4Mv/Loq6tjiG4JdvKzUh65PXw+8cGfLU4KGCzCW9CWaIjuoOgtFM4xuT+Sh5Q2NMonOBZ+dbBctLacexg5j8flq91Vn5SLniKPA3LgYwMx3MaDHwARUMQHdSIOIMx0LpDKz5rT1Xg9Gropq3kBge0dIz7N7aYKJhoGupYGm08y4q9Jwg0oIdUWE3a8Vix/H/8BAAEAAAoACgAIenoAHQAXABgALQACAQFEaQAFAAMCaDIADQASABAEAwgEBAEFAwgFBQEIBgYBABsAAwIAAgASAAAACwACAQAAAAASABAAAA13d3cuYmFpZHUuY29tACsABwbq6gMEAwMAEAAOAAwCaDIIaHR0cC8xLjEAMwArACl6egABAAAdACDvetaiYWqBPTT1A+CJ5vFNDb5g0pXUdjCa/zWsHl4JDAAFAAUBAAAAAPr6AAEAABUAKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
     void schedule_dispatch_test();
     void schedule_generate_key();
     void acquire_key(const std::function<void()> &callback);
@@ -57,7 +54,8 @@ private:
     io_context ic;
     volatile double key_count = 0;
     volatile uint16_t running_test = 0;
-
+    byte *tls_request;
+    uint16_t tls_request_len;
     io_context::work *iw = nullptr;
     boost::asio::deadline_timer schedule_timer;
     boost::asio::deadline_timer generate_key_timer;
@@ -68,6 +66,7 @@ private:
     void test_all_tunnels(const vector<stream_tunnel *> &result, const test_case &tc,
                           const multi_test_callback &callback);
     test_case poll_one_test();
+    void reset_tls_session_id();
 };
 
 
