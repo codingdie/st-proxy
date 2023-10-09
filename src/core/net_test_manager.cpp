@@ -195,6 +195,7 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
                                  << length << END;
                 }
             };
+            reset_tls_session_id();
             boost::asio::async_write(*socket, buffer(tls_request, tls_request_len),
                                      boost::asio::transfer_at_least(tls_request_len), send_handler);
         } else {
