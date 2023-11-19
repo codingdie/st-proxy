@@ -12,7 +12,7 @@
 class quality_analyzer {
 public:
     static const uint32_t IP_TUNNEL_TEST_COUNT = 3;
-    static const uint32_t TUNNEL_TEST_COUNT = 10;
+    static const uint32_t TUNNEL_TEST_COUNT = 20;
 
     quality_analyzer();
     virtual ~quality_analyzer();
