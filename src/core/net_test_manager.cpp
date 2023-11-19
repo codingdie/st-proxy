@@ -87,7 +87,7 @@ net_test_manager &net_test_manager::uniq() {
     static net_test_manager instance;
     return instance;
 }
-void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, uint32_t socks_port,
+void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port,
                                                    const std::string &test_ip, const net_test_callback &callback) {
     uint32_t begin = time::now();
     string logTag = "net test tls handshake v2 with socks: " + socks_ip + ":" + to_string(socks_port) +
@@ -102,8 +102,11 @@ void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, 
             timer->async_wait([=](boost::system::error_code ec) {
                 socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
                 socket->cancel(ec);
-                socket->close(ec);
-                ic.post([=]() { delete socket; });
+                ic.post([=]() {
+                    boost::system::error_code ec;
+                    socket->close(ec);
+                    delete socket;
+                });
             });
             auto complete = [=](bool valid, bool connected, uint32_t cost) {
                 timer->cancel();
@@ -138,13 +141,12 @@ void net_test_manager::tls_handshake_v2_with_socks(const std::string &socks_ip, 
             boost::asio::async_write(*socket, buffer(tls_request, tls_request_len),
                                      boost::asio::transfer_at_least(tls_request_len), send_handler);
         } else {
-            delete socket;
             callback(false, false, time::now() - begin);
         }
     });
 }
 
-void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bool, bool, uint32_t)> &callback) {
+void net_test_manager::tls_handshake(uint32_t dist_ip, const std::function<void(bool, bool, uint32_t)> &callback) {
     string logTag = "net test tls handshake v2" + ipv4::ip_to_str(dist_ip) + ":443";
     tcp::endpoint server_endpoint(make_address_v4(dist_ip), 443);
     auto *socket = new tcp::socket(ic);
@@ -154,8 +156,11 @@ void net_test_manager::tls_handshake_v2(uint32_t dist_ip, const function<void(bo
     timer->async_wait([=](boost::system::error_code ec) {
         socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
         socket->cancel(ec);
-        socket->close(ec);
-        ic.post([=]() { delete socket; });
+        ic.post([=]() {
+            boost::system::error_code ec;
+            socket->close(ec);
+            delete socket;
+        });
     });
     socket->open(tcp::v4());
     nat_utils::set_mark(1024, *socket);
@@ -213,9 +218,9 @@ void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t
     acquire_key([=]() {
         if (port == 443) {
             if (tunnel->type == "DIRECT") {
-                tls_handshake_v2(dist_ip, complete);
+                tls_handshake(dist_ip, complete);
             } else {
-                tls_handshake_v2_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), complete);
+                tls_handshake_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), complete);
             }
         } else if (port == 80) {
             complete(false, false, 0);

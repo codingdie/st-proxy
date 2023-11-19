@@ -59,11 +59,8 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
     auto out_buffer = out_buffer_p.first;
     auto in_buffer = out_buffer_p.first;
     auto proxyEnd = tcp::endpoint(make_address(socks_ip), socks_port);
-#if BOOST_VERSION >= 107000
-    auto *timer = new deadline_timer(proxy_sock->get_executor());
-#else
-    auto *timer = new deadline_timer(proxy_sock->get_io_service());
-#endif
+    const auto &executor = proxy_sock->get_executor();
+    auto *timer = new deadline_timer(executor);
     auto complete = [=](bool success) {
         timer->cancel();
         delete timer;
@@ -71,12 +68,16 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
     };
     timer->expires_from_now(boost::posix_time::milliseconds(timeout));
     timer->async_wait([=](boost::system::error_code ec) {
-        if (!ec) {
-            proxy_sock->shutdown(boost::asio::socket_base::shutdown_both, ec);
+        if (ec != boost::asio::error::operation_aborted) {
+            proxy_sock->shutdown(boost::asio::socket_base::shutdown_both,ec);
             proxy_sock->cancel(ec);
-            proxy_sock->close(ec);
+            boost::asio::post(executor, [=]() {
+                boost::system::error_code ec;
+                proxy_sock->close(ec);
+                delete proxy_sock;
+            });
         }
-        boost::asio::post(proxy_sock->get_executor(), [=]() {
+        boost::asio::post(executor, [=]() {
             st::mem::pfree(out_buffer_p);
             st::mem::pfree(in_buffer_p);
         });
