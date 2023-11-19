@@ -31,8 +31,8 @@ public:
     void test(uint32_t dist_ip, uint16_t port, uint16_t priority);
 
     //https handshake test 443 port
-    void tls_handshake_v2(uint32_t dist_ip, const net_test_callback &callback);
-    void tls_handshake_v2_with_socks(const std::string &socks_ip, uint32_t socks_port, const std::string &test_ip,
+    void tls_handshake(uint32_t dist_ip, const net_test_callback &callback);
+    void tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port, const std::string &test_ip,
                                      const net_test_callback &callback);
     //http test 22 port
     void http_random(uint32_t dist_ip, const net_test_callback &callback);

@@ -127,7 +127,7 @@ void quality_analyzer::process_record(quality_record &record) {
     auto success = 0;
     auto failed = 0;
     uint64_t cost = 0;
-    uint32_t record_expire_time = 1000L * 60 * 60 * 24;
+    uint32_t record_expire_time = 1000L * 60 * 60;
     if (record.type() != st::proxy::proto::IP_TUNNEL) {
         record_expire_time = 1000L * 60 * 60;
     }

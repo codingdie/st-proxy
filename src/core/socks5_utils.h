@@ -50,6 +50,7 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
                           const tcp::endpoint &dist_end, int timeout,
                           const std::function<void(bool)> &complete_handler) {
     if (!init_proxy_socks(proxy_sock)) {
+        delete proxy_sock;
         complete_handler(false);
         return;
     }
@@ -59,27 +60,25 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
     auto out_buffer = out_buffer_p.first;
     auto in_buffer = out_buffer_p.first;
     auto proxyEnd = tcp::endpoint(make_address(socks_ip), socks_port);
-#if BOOST_VERSION >= 107000
-    auto *timer = new deadline_timer(proxy_sock->get_executor());
-#else
-    auto *timer = new deadline_timer(proxy_sock->get_io_service());
-#endif
+    const auto &executor = proxy_sock->get_executor();
+    auto *timer = new deadline_timer(executor);
     auto complete = [=](bool success) {
         timer->cancel();
         delete timer;
+        if (!success) {
+            boost::asio::post(proxy_sock->get_executor(), [=]() { delete proxy_sock; });
+        }
+        st::mem::pfree(out_buffer_p);
+        st::mem::pfree(in_buffer_p);
         complete_handler(success);
     };
     timer->expires_from_now(boost::posix_time::milliseconds(timeout));
     timer->async_wait([=](boost::system::error_code ec) {
-        if (!ec) {
+        if (ec != boost::asio::error::operation_aborted) {
             proxy_sock->shutdown(boost::asio::socket_base::shutdown_both, ec);
             proxy_sock->cancel(ec);
             proxy_sock->close(ec);
         }
-        boost::asio::post(proxy_sock->get_executor(), [=]() {
-            st::mem::pfree(out_buffer_p);
-            st::mem::pfree(in_buffer_p);
-        });
     });
 
     proxy_sock->async_connect(proxyEnd, [=](boost::system::error_code error) {
