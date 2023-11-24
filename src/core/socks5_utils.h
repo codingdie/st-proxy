@@ -50,6 +50,7 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
                           const tcp::endpoint &dist_end, int timeout,
                           const std::function<void(bool)> &complete_handler) {
     if (!init_proxy_socks(proxy_sock)) {
+        delete proxy_sock;
         complete_handler(false);
         return;
     }
