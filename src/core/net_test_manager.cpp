@@ -101,6 +101,7 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
             timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
             timer->async_wait([=](boost::system::error_code ec) {
                 socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
+                logger::DEBUG << logTag << "11111!" << END;
                 socket->cancel(ec);
                 ic.post([=]() {
                     boost::system::error_code ec;
