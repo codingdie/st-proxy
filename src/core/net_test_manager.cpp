@@ -104,7 +104,6 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
                     if (socket->is_open()) {
                         boost::system::error_code ec;
                         socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
-                        socket->cancel(ec);
                     }
                     ic.post([=]() {
                         boost::system::error_code ec;

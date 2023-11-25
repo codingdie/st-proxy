@@ -6,7 +6,7 @@
 TEST(proxy_unit_tests, test_tls_handshake_v2_with_socks) {
     mutex lock;
     lock.lock();
-    net_test_manager::uniq().tls_handshake_with_socks("192.168.31.20", 10020, "142.250.204.68",
+    net_test_manager::uniq().tls_handshake_with_socks("192.168.31.20", 10000, "18.65.168.67",
                                                       [=, &lock](bool valid, bool connected, uint32_t cost) {
                                                           logger::INFO << valid << connected << cost << END;
                                                           lock.unlock();
