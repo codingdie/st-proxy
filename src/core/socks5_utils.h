@@ -68,10 +68,10 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
         if (!success) {
             boost::asio::post(executor, [=]() {
                 delete proxy_sock;
-                st::mem::pfree(out_buffer_p);
-                st::mem::pfree(in_buffer_p);
             });
         }
+        st::mem::pfree(out_buffer_p);
+        st::mem::pfree(in_buffer_p);
         complete_handler(success);
     };
     timer->expires_from_now(boost::posix_time::milliseconds(timeout));
