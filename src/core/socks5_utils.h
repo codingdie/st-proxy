@@ -66,9 +66,7 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
         timer->cancel();
         delete timer;
         if (!success) {
-            boost::asio::post(executor, [=]() {
-                delete proxy_sock;
-            });
+            delete proxy_sock;
         }
         st::mem::pfree(out_buffer_p);
         st::mem::pfree(in_buffer_p);
