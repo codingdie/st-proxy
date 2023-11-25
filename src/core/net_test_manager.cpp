@@ -100,21 +100,16 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
             auto *timer = new deadline_timer(ic);
             timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
             timer->async_wait([=](boost::system::error_code ec) {
-                this->ic.post([=]() {
-                    if (socket->is_open()) {
-                        boost::system::error_code ec;
-                        socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
-                    }
-                    ic.post([=]() {
-                        boost::system::error_code ec;
-                        socket->close(ec);
-                        delete socket;
-                    });
-                });
+                if (ec != boost::asio::error::operation_aborted) {
+                    socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
+                    socket->cancel(ec);
+                    socket->close(ec);
+                }
             });
             auto complete = [=](bool valid, bool connected, uint32_t cost) {
                 timer->cancel();
                 delete timer;
+                delete socket;
                 callback(valid, connected, cost);
             };
             auto send_handler = [=](boost::system::error_code ec, std::size_t length) {
