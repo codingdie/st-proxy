@@ -108,8 +108,10 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
             });
             auto complete = [=](bool valid, bool connected, uint32_t cost) {
                 timer->cancel();
-                delete timer;
-                delete socket;
+                ic.post([=]() {
+                    delete timer;
+                    delete socket;
+                });
                 callback(valid, connected, cost);
             };
             auto send_handler = [=](boost::system::error_code ec, std::size_t length) {
