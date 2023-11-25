@@ -88,7 +88,7 @@ net_test_manager &net_test_manager::uniq() {
     return instance;
 }
 void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port,
-                                                   const std::string &test_ip, const net_test_callback &callback) {
+                                                const std::string &test_ip, const net_test_callback &callback) {
     uint32_t begin = time::now();
     string logTag = "net test tls handshake v2 with socks: " + socks_ip + ":" + to_string(socks_port) +
                     " target:" + test_ip + ":443";
@@ -100,9 +100,10 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
             auto *timer = new deadline_timer(ic);
             timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
             timer->async_wait([=](boost::system::error_code ec) {
-                socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
-                logger::DEBUG << logTag << "11111!" << END;
-                socket->cancel(ec);
+                if (socket->is_open()) {
+                    socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
+                    socket->cancel(ec);
+                }
                 ic.post([=]() {
                     boost::system::error_code ec;
                     socket->close(ec);
