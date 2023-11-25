@@ -65,23 +65,22 @@ static void connect_socks(tcp::socket *proxy_sock, const std::string &socks_ip, 
     auto complete = [=](bool success) {
         timer->cancel();
         delete timer;
+        if (!success) {
+            boost::asio::post(executor, [=]() {
+                delete proxy_sock;
+                st::mem::pfree(out_buffer_p);
+                st::mem::pfree(in_buffer_p);
+            });
+        }
         complete_handler(success);
     };
     timer->expires_from_now(boost::posix_time::milliseconds(timeout));
     timer->async_wait([=](boost::system::error_code ec) {
         if (ec != boost::asio::error::operation_aborted) {
-            proxy_sock->shutdown(boost::asio::socket_base::shutdown_both,ec);
+            proxy_sock->shutdown(boost::asio::socket_base::shutdown_both, ec);
             proxy_sock->cancel(ec);
-            boost::asio::post(executor, [=]() {
-                boost::system::error_code ec;
-                proxy_sock->close(ec);
-                delete proxy_sock;
-            });
+            proxy_sock->close(ec);
         }
-        boost::asio::post(executor, [=]() {
-            st::mem::pfree(out_buffer_p);
-            st::mem::pfree(in_buffer_p);
-        });
     });
 
     proxy_sock->async_connect(proxyEnd, [=](boost::system::error_code error) {
