@@ -89,7 +89,7 @@ void proxy_server::config_console() {
             return make_pair(true, str);
         } else if (command == "proxy net test") {
             if (ip > 0) {
-                net_test_manager::uniq().test(ip, port, 100);
+//                net_test_manager::uniq().test(ip, port, 100);
                 return make_pair(true, "add net test " + ipStr);
             }
         } else if (command == "proxy register area virtual port") {

@@ -25,7 +25,7 @@ public:
 
     void start();
 
-    string idStr();
+    string id_str();
 
     string transmit_log() const;
 

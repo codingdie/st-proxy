@@ -58,10 +58,10 @@ void session_manager::monitor_session() {
             closed_session_ids.emplace(sid);
         } else if (session->is_connect_timeout()) {
             session->shutdown();
-            logger::WARN << "session manager shutdown connect timeout session" << session->idStr() << END;
+            logger::WARN << "session manager shutdown connect timeout session" << session->id_str() << END;
         } else if (!session->is_transmitting()) {
             session->shutdown();
-            logger::WARN << "session manager shutdown noRead noWrite session" << session->idStr() << END;
+            logger::WARN << "session manager shutdown noRead noWrite session" << session->id_str() << END;
         }
     }
     for (uint64_t session_id : closed_session_ids) {

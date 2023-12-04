@@ -59,7 +59,7 @@ void proxy_session::start() {
     }
     select_tunnels();
     if (selected_tunnels.empty()) {
-        logger::ERROR << idStr() << "cal tunnels empty!" << END;
+        logger::ERROR << id_str() << "cal tunnels empty!" << END;
         shutdown();
         return;
     }
@@ -74,7 +74,7 @@ void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_ha
                 this->connected_tunnel = tunnel;
                 complete_handler(true);
             } else {
-                logger::ERROR << idStr() << "connect" << tunnel->id() << "failed!" << END;
+                logger::ERROR << id_str() << "connect" << tunnel->id() << "failed!" << END;
                 try_connect_index++;
                 connect_tunnels(complete_handler);
             }
@@ -94,7 +94,7 @@ void proxy_session::try_connect() {
         logger::traceId = id;
         uint64_t connect_cost = time::now() - begin;
         uint64_t try_connect_cost = time::now() - real_begin;
-        logger::DEBUG << idStr() << "connect" << (success ? "success!" : "failed!") << "cost" << connect_cost
+        logger::DEBUG << id_str() << "connect" << (success ? "success!" : "failed!") << "cost" << connect_cost
                       << try_connect_cost << END;
         if (success) {
             this->nextStage(STAGE::CONNECTED);
@@ -114,10 +114,7 @@ void proxy_session::try_connect() {
 void proxy_session::select_tunnels() {
     uint32_t dist_ip = dist_end.address().to_v4().to_uint();
     auto select_result = quality_analyzer::uniq().select_tunnels(dist_ip, dist_hosts, prefer_area);
-    auto need_test_tunnels = quality_analyzer::uniq().cal_need_test_tunnels(select_result);
-    if (need_test_tunnels.size() > 0) {
-        net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result[0].first->type == "DIRECT" ? 0 : 1);
-    }
+    net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result);
     for (const auto &it : select_result) {
         stream_tunnel *tunnel = it.first;
         selected_tunnels.emplace_back(tunnel);
@@ -271,7 +268,7 @@ void proxy_session::read_proxy() {
                 if (dist_end.port() == 80 || dist_end.port() == 443) {
                     quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
                 }
-                logger::DEBUG << this->idStr() << "first package failed!" << error.message() << END;
+                logger::DEBUG << this->id_str() << "first package failed!" << error.message() << END;
             } else {
                 quality_analyzer::uniq().record_first_package_success(dist_end.address().to_v4().to_uint(),
                                                                       connected_tunnel, first_packet_time);
@@ -380,14 +377,15 @@ void proxy_session::write_client(const string &tag, size_t writeSize, const std:
 
 proxy_session::~proxy_session() {
     logger::traceId = id;
-    logger::INFO << idStr() << "disconnect" << transmit_log() << END;
+    logger::INFO << id_str() << "disconnect" << transmit_log() << END;
     mem::pfree(in_buffer, PROXY_BUFFER_SIZE);
     mem::pfree(out_buffer, PROXY_BUFFER_SIZE);
 }
 
-string proxy_session::idStr() {
+string proxy_session::id_str() {
     return (prefer_area.empty() ? "" : prefer_area + "->") + asio::addr_str(client_end) + "->" +
            asio::addr_str(dist_end) + (this->v_port != 0 ? "/" + to_string(this->v_port) : "") +
+           (dist_hosts.size() > 0 ? "->" + st::utils::strutils::join(dist_hosts, ",") : "") +
            (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
 }
 

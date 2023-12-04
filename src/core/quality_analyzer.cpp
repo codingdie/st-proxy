@@ -108,7 +108,7 @@ quality_record quality_analyzer::get_record(uint32_t dist_ip, stream_tunnel *tun
     auto begin = time::now();
     auto key = build_key(dist_ip, tunnel);
     quality_record record = get_record(key);
-    record.set_queue_limit(tunnel->type == "DIRECT" ? IP_TUNNEL_TEST_COUNT * 3 : IP_TUNNEL_TEST_COUNT);
+    record.set_queue_limit(IP_TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::IP_TUNNEL);
     process_record(record);
     apm_logger::perf("st-proxy-get-ip-tunnel-record", {}, time::now() - begin);
@@ -192,6 +192,7 @@ uint8_t quality_analyzer::need_more_test(const quality_record &record) {
     uint32_t result = record.queue_limit() - (record.first_package_failed() + record.first_package_success());
     return std::min(record.queue_limit(), result);
 }
+
 void quality_analyzer::add_session_record(const string &key, quality_record &record,
                                           const st::proxy::proto::session_record &s_record) {
     add_session_record(record, s_record);
@@ -300,20 +301,6 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
          });
     apm_logger::perf("st-proxy-select-tunnels", {}, time::now() - begin);
     return tunnels;
-}
-vector<stream_tunnel *> quality_analyzer::cal_need_test_tunnels(const select_tunnels_tesult &tunnels) {
-    int max_score = tunnels[0].second.first;
-    vector<stream_tunnel *> result;
-    for (const auto &item : tunnels) {
-        if (item.second.first == max_score) {
-            if (this->need_more_test(item.second.second)) {
-                result.emplace_back(item.first);
-            }
-        } else {
-            break;
-        }
-    }
-    return result;
 }
 bool quality_analyzer::check_all_failed(const quality_record &record) {
     return need_more_test(record) == 0 && record.first_package_success() == 0;
