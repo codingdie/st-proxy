@@ -385,6 +385,7 @@ proxy_session::~proxy_session() {
 string proxy_session::idStr() {
     return (prefer_area.empty() ? "" : prefer_area + "->") + asio::addr_str(client_end) + "->" +
            asio::addr_str(dist_end) + (this->v_port != 0 ? "/" + to_string(this->v_port) : "") +
+           (dist_hosts.size() > 0 ? "->" + st::utils::strutils::join(dist_hosts[0], ",") : "") +
            (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
 }
 
