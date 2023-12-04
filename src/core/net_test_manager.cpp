@@ -8,7 +8,7 @@
 #include <boost/asio/ssl.hpp>
 net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }),
-      t_queue(10, 10, [this](const st::task::priority_task<test_case> &task) {
+      t_queue("st-proxy-net-test", 10, 30, [this](const st::task::priority_task<test_case> &task) {
           const test_case &tc = task.get_input();
           this->do_test(tc.tunnel, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
               this->t_queue.complete(task);
@@ -17,6 +17,7 @@ net_test_manager::net_test_manager()
               } else {
                   quality_analyzer::uniq().record_failed(tc.ip, tc.tunnel);
               }
+              apm_logger::perf("st-proxy-net-test-stats", {{}}, cost);
           });
       }) {
     for (byte &i : test_request) {

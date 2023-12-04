@@ -138,7 +138,7 @@ TEST(unit_tests, test_task_queue) {
     using namespace st::task;
     int total = 5;
     vector<string> result;
-    st::task::queue<string> que(1, 1, [&result, &que](const priority_task<string> &task) {
+    st::task::queue<string> que("st-unit-test", 1, 1, [&result, &que](const priority_task<string> &task) {
         result.emplace_back(task.get_input());
         que.complete(task);
     });

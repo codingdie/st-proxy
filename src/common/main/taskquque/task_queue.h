@@ -39,6 +39,7 @@ namespace st {
             std::priority_queue<st::task::priority_task<input>, vector<st::task::priority_task<input>>,
                                 std::less<priority_task<input>>>
                     i_queue;
+            std::string name;
             io_context ic;
             io_context::work *iw = nullptr;
             thread th;
@@ -74,15 +75,16 @@ namespace st {
                         boost::asio::post(ic, [this, task]() { executor(task); });
                     }
                 });
-
+                apm_logger::perf("st-task-queue-stats", {{"name", name}},
+                                 {{"heap", i_queue.size()}, {"running", running}});
                 schedule_timer.expires_from_now(boost::posix_time::milliseconds(100));
                 schedule_timer.async_wait([this](error_code ec) { schedule_dispatch_task(); });
             }
 
         public:
-            explicit queue(uint32_t speed, uint32_t max_running,
+            explicit queue(const string &name, uint32_t speed, uint32_t max_running,
                            const std::function<void(st::task::priority_task<input>)> &executor)
-                : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }), generate_key_timer(ic),
+                : name(name), ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }), generate_key_timer(ic),
                   schedule_timer(ic), executor(executor), running(0), speed(speed), max_running(max_running) {
                 schedule_generate_key();
                 schedule_dispatch_task();
@@ -100,7 +102,7 @@ namespace st {
             void complete(const st::task::priority_task<input> &task) {
                 std::lock_guard<std::mutex> lg(mutex);
                 task_keys.erase(task.pk);
-                //                running--;
+                running--;
             }
             ~queue() {
                 ic.stop();
