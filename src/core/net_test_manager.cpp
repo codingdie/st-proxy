@@ -97,7 +97,7 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
 }
 
 void net_test_manager::tls_handshake(uint32_t dist_ip, const std::function<void(bool, bool, uint32_t)> &callback) {
-    string logTag = "net test tls handshake direct" + ipv4::ip_to_str(dist_ip) + ":443";
+    string logTag = "net test tls handshake direct " + ipv4::ip_to_str(dist_ip) + ":443";
     logger::DEBUG << logTag << "start!" << END;
     tcp::endpoint server_endpoint(make_address_v4(dist_ip), 443);
     auto *socket = new tcp::socket(ic);
