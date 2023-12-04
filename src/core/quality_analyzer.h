@@ -39,8 +39,6 @@ public:
 
     select_tunnels_tesult select_tunnels(uint32_t dist_ip, const vector<string> &dist_hosts, const string &prefer_area);
 
-    vector<stream_tunnel *> cal_need_test_tunnels(const select_tunnels_tesult &tunnels);
-
     string analyse_tunnel();
 
     void delete_all_record();
@@ -61,6 +59,7 @@ private:
     void execute(std::function<void()> func);
     bool check_all_failed(const proxy::proto::quality_record &record);
     static uint8_t need_more_test(const st::proxy::proto::quality_record &record);
+
     static bool has_record_ip_failed(uint32_t dist_ip, const proxy::proto::quality_record &tunnel_record);
 };
 

@@ -114,10 +114,7 @@ void proxy_session::try_connect() {
 void proxy_session::select_tunnels() {
     uint32_t dist_ip = dist_end.address().to_v4().to_uint();
     auto select_result = quality_analyzer::uniq().select_tunnels(dist_ip, dist_hosts, prefer_area);
-    auto need_test_tunnels = quality_analyzer::uniq().cal_need_test_tunnels(select_result);
-    if (need_test_tunnels.size() > 0) {
-        net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result[0].first->type == "DIRECT" ? 0 : 1);
-    }
+    net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result);
     for (const auto &it : select_result) {
         stream_tunnel *tunnel = it.first;
         selected_tunnels.emplace_back(tunnel);
