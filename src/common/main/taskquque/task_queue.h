@@ -75,7 +75,7 @@ namespace st {
                         boost::asio::post(ic, [this, task]() { executor(task); });
                     }
                 });
-                apm_logger::perf("st-task-queue-stats", {{"name", name}},
+                apm_logger::perf("st-task-queue-stats", {{"queue_name", name}},
                                  {{"heap", i_queue.size()}, {"running", running}});
                 schedule_timer.expires_from_now(boost::posix_time::milliseconds(100));
                 schedule_timer.async_wait([this](error_code ec) { schedule_dispatch_task(); });
