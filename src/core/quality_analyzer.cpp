@@ -99,7 +99,7 @@ st::proxy::proto::quality_record quality_analyzer::get_record(stream_tunnel *tun
 quality_record quality_analyzer::get_record(uint32_t dist_ip) {
     auto key = build_key(dist_ip);
     quality_record record = get_record(key);
-    record.set_queue_limit(st::proxy::config::uniq().tunnels.size());
+    record.set_queue_limit(std::max((uint64_t) st::proxy::config::uniq().tunnels.size(), (uint64_t) 3U));
     record.set_type(st::proxy::proto::IP);
     process_record(record);
     return record;
@@ -282,20 +282,19 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
              if (a.second.first == b.second.first) {
                  const proxy::proto::quality_record &record_a = a.second.second;
                  const proxy::proto::quality_record &record_b = b.second.second;
-                 // 基础策略排序优先级差不多情况下
-                 // 当收集了足够多的数据后，优先成功率高的，其次优先首包耗时低,否则优先使用没用过的tunnel
-                 if (need_more_test(record_a) || need_more_test(record_b)) {
-                     return record_a.first_package_success() + record_a.first_package_failed() <
-                            record_b.first_package_success() + record_b.first_package_failed();
+                 if (record_a.first_package_success() != record_b.first_package_success()) {
+                     return record_a.first_package_success() > record_b.first_package_success();
                  } else {
-                     if (record_a.first_package_success() != record_b.first_package_success()) {
-                         return record_a.first_package_success() > record_b.first_package_success();
-                     } else {
-                         if (record_a.first_package_cost() != record_b.first_package_cost()) {
-                             return record_a.first_package_cost() < record_b.first_package_cost();
-                         }
+                     if (record_a.first_package_cost() != record_b.first_package_cost()) {
+                         return record_a.first_package_cost() < record_b.first_package_cost();
                      }
                  }
+                 // 基础策略排序优先级差不多情况下
+                 // 当收集了足够多的数据后，优先成功率高的，其次优先首包耗时低,否则优先使用没用过的tunnel
+                 //                 if (need_more_test(record_a) || need_more_test(record_b)) {
+                 //                     return record_a.first_package_success() + record_a.first_package_failed() <
+                 //                            record_b.first_package_success() + record_b.first_package_failed();
+                 //                 }
              }
              return a.second.first > b.second.first;
          });
@@ -350,3 +349,4 @@ void quality_analyzer::delete_all_record() {
         db.erase(item->id());
     }
 }
+void quality_analyzer::clear() { db.clear(); }

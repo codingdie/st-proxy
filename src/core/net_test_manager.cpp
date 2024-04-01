@@ -17,7 +17,6 @@ net_test_manager::net_test_manager()
               } else {
                   quality_analyzer::uniq().record_failed(tc.ip, tc.tunnel);
               }
-              apm_logger::perf("st-proxy-net-test-stats", {{}}, cost);
           });
       }) {
     for (byte &i : test_request) {
@@ -74,9 +73,10 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
                             logger::DEBUG << logTag << "success!" << first << END;
                             complete(true, true, time::now() - begin);
                         } else {
-                            logger::WARN << logTag << "receive test response error!"
-                                         << string(ec.category().name()) + "/" + ec.message() << length << END;
-                            complete(false, true, time::now() - begin);
+                            if (ec != boost::asio::error::operation_aborted) {
+                                logger::WARN << logTag << "receive test response error!"
+                                             << string(ec.category().name()) + "/" + ec.message() << length << END;
+                            }
                         }
                     };
                     socket->async_receive(buffer(data.first, 1), receive_handler);
@@ -156,7 +156,9 @@ void net_test_manager::tls_handshake(uint32_t dist_ip, const std::function<void(
             boost::asio::async_write(*socket, buffer(tls_request, tls_request_len),
                                      boost::asio::transfer_at_least(tls_request_len), send_handler);
         } else {
-            logger::WARN << logTag << "connect error!" << ec.message() << END;
+            if (ec != boost::asio::error::operation_aborted) {
+                logger::WARN << logTag << "connect error!" << ec.message() << END;
+            }
             complete(false, false, time::now() - begin);
         }
     });
@@ -219,14 +221,18 @@ void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net
                     socket->async_read_some(buffer(data.first, data.second), receive_handler);
                 } else {
                     complete(false, true, time::now() - begin);
-                    logger::WARN << logTag << "send test request error!" << ec.category().name() << ec.message()
-                                 << length << END;
+                    if (ec != boost::asio::error::operation_aborted) {
+                        logger::WARN << logTag << "send test request error!" << ec.category().name() << ec.message()
+                                     << length << END;
+                    }
                 }
             };
             boost::asio::async_write(*socket, buffer(test_request, TEST_REQUEST_LEN),
                                      boost::asio::transfer_at_least(TEST_REQUEST_LEN), send_handler);
         } else {
-            logger::WARN << logTag << "connect error!" << ec.message() << END;
+            if (ec != boost::asio::error::operation_aborted) {
+                logger::WARN << logTag << "connect error!" << ec.message() << END;
+            }
             complete(false, false, time::now() - begin);
         }
     });
@@ -234,8 +240,8 @@ void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net
 void net_test_manager::http_random(uint32_t dist_ip, const function<void(bool, bool, uint32_t)> &callback) {
     random_package(dist_ip, 80, callback);
 }
-void net_test_manager::test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt) {
-    if (port == 443 && stt.size() > 0) {
+void net_test_manager::add_test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt) {
+    if (port == 443 && !stt.empty()) {
         int max_score = stt[0].second.first;
         for (const auto &item : stt) {
             auto &record = item.second.second;
@@ -250,7 +256,8 @@ void net_test_manager::test(uint32_t dist_ip, uint16_t port, const select_tunnel
                     tc.port = port;
                     tc.tunnel = tunnel;
                     tc.tunnel_test_index = i;
-                    st::task::priority_task<test_case> task(tc, tunnel->type == "DIRECT" ? 0 : 1, tc.key());
+                    st::task::priority_task<test_case> task(
+                            tc, tunnel->type == "DIRECT" ? 0 : 100 + (record.queue_limit() - i), tc.key());
                     t_queue.submit(task);
                 }
             } else {

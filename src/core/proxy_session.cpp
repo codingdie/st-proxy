@@ -67,7 +67,7 @@ void proxy_session::start() {
 }
 
 void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_handler) {
-    if (try_connect_index < 1 && this->stage == CONNECTING) {
+    if (try_connect_index < 2 && this->stage == CONNECTING) {
         stream_tunnel *tunnel = selected_tunnels[try_connect_index];
         auto complete = [=](bool success) {
             if (success) {
@@ -114,7 +114,7 @@ void proxy_session::try_connect() {
 void proxy_session::select_tunnels() {
     uint32_t dist_ip = dist_end.address().to_v4().to_uint();
     auto select_result = quality_analyzer::uniq().select_tunnels(dist_ip, dist_hosts, prefer_area);
-    net_test_manager::uniq().test(dist_ip, dist_end.port(), select_result);
+    net_test_manager::uniq().add_test(dist_ip, dist_end.port(), select_result);
     for (const auto &it : select_result) {
         stream_tunnel *tunnel = it.first;
         selected_tunnels.emplace_back(tunnel);
@@ -311,6 +311,8 @@ void proxy_session::close(tcp::socket &socks, const std::function<void()> &compl
                 socks.close(ec);
                 completeHandler();
             });
+        }else{
+            completeHandler();
         }
     });
 }
@@ -385,7 +387,7 @@ proxy_session::~proxy_session() {
 string proxy_session::id_str() {
     return (prefer_area.empty() ? "" : prefer_area + "->") + asio::addr_str(client_end) + "->" +
            asio::addr_str(dist_end) + (this->v_port != 0 ? "/" + to_string(this->v_port) : "") +
-           (dist_hosts.size() > 0 ? "->" + st::utils::strutils::join(dist_hosts, ",") : "") +
+           (!dist_hosts.empty() ? "->" + st::utils::strutils::join(dist_hosts, ",") : "") +
            (connected_tunnel != nullptr ? ("->" + connected_tunnel->id()) : "");
 }
 

@@ -168,17 +168,21 @@ namespace st {
             return "";
         }
         void manager::async_load_ip_info_from_net(const uint32_t &ip) {
-            if (net_caches.find(ip) != net_caches.end()) {
-                return;
-            }
             ctx.post([this, ip]() {
                 if (ips.emplace(ip).second) {
                     std::function<void(const uint32_t &ip)> do_load_ip_info = [this](const uint32_t &ip) {
-                        if (get_area(ip, net_caches).empty()) {
+                        string net_area = "";
+                        {
+                            std::lock_guard<std::mutex> lg(net_lock);
+                            net_area = get_area(ip, net_caches);
+                        }
+                        if (net_area.empty()) {
                             auto area_code = load_ip_info(ip);
                             if (!area_code.empty()) {
-                                std::lock_guard<std::mutex> lg(net_lock);
-                                this->net_caches[ip] = area_code;
+                                {
+                                    std::lock_guard<std::mutex> lg(net_lock);
+                                    this->net_caches[ip] = area_code;
+                                }
                                 async_load_area_ips(area_code);
                             } else {
                                 logger::ERROR << "async load ip info failed!" << st::utils::ipv4::ip_to_str(ip) << END;
@@ -242,6 +246,7 @@ namespace st {
             return "";
         }
         string manager::get_area(const uint32_t &ip, bool async_load_net) {
+            auto begin = time::now();
             string area;
             if (ip != 0) {
                 {
@@ -312,7 +317,6 @@ namespace st {
         }
 
         void manager::sync_net_area_ip() {
-            lock_guard<mutex> lockGuard(net_lock);
             unordered_set<string> final_record;
             ifstream in(IP_NET_AREA_FILE);
             if (in) {
@@ -324,7 +328,12 @@ namespace st {
                 }
                 in.close();
                 auto ori_size = final_record.size();
-                for (auto &net_cache : net_caches) {
+                unordered_map<uint32_t, string> net_caches_duplicate;
+                {
+                    lock_guard<mutex> lockGuard(net_lock);
+                    net_caches_duplicate = net_caches;
+                }
+                for (auto &net_cache : net_caches_duplicate) {
                     auto ip = net_cache.first;
                     auto area = net_cache.second;
                     final_record.emplace(st::utils::ipv4::ip_to_str(ip) + "\t" + area);
@@ -348,7 +357,10 @@ namespace st {
                     }
                     fs.flush();
                     fs.close();
-                    this->net_caches = new_caches;
+                    {
+                        lock_guard<mutex> lockGuard(net_lock);
+                        this->net_caches = new_caches;
+                    }
                     auto last_write_time = boost::filesystem::last_write_time(IP_NET_AREA_FILE);
                     if (last_write_time < tmp_crate_time) {
                         boost::filesystem::rename(tmp, IP_NET_AREA_FILE);
@@ -364,7 +376,7 @@ namespace st {
                 file::create_if_not_exits(IP_NET_AREA_FILE);
                 logger::ERROR << "sync net area ips skip! file not exits" << END;
             }
-            sync_timer->expires_from_now(boost::posix_time::seconds(3 + random_engine() % 2));
+            sync_timer->expires_from_now(boost::posix_time::seconds(10 + random_engine() % 5));
             sync_timer->async_wait([=](boost::system::error_code ec) {
                 this->sync_net_area_ip();
             });

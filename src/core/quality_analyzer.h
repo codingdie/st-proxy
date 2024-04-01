@@ -43,6 +43,8 @@ public:
 
     void delete_all_record();
 
+    void clear();
+
 private:
     st::kv::disk_kv db;
     io_context ic;

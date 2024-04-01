@@ -30,6 +30,7 @@ TEST(proxy_unit_tests, test_quality_analyzer) {
     quality_analyzer::uniq().record_failed(distIp, tunnel);
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 30);
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 999);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     auto record = quality_analyzer::uniq().get_record(distIp, tunnel);
     ASSERT_EQ(record.queue_size() - old_record.queue_size(), 5);
     auto s_record = record.records((record.queue_size() - 1) % quality_analyzer::IP_TUNNEL_TEST_COUNT);
@@ -45,7 +46,7 @@ TEST(proxy_unit_tests, test_quality_analyzer) {
 }
 
 TEST(proxy_unit_tests, test_quality_analyzer_async) {
-    auto ic = new boost::asio::io_context();
+    quality_analyzer::uniq().clear();
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
     auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel);
@@ -53,8 +54,7 @@ TEST(proxy_unit_tests, test_quality_analyzer_async) {
     quality_analyzer::uniq().record_failed(distIp, tunnel);
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 30);
     quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 60);
-    ic->run();
-    delete ic;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     auto record = quality_analyzer::uniq().get_record(distIp, tunnel);
     ASSERT_EQ(record.queue_size() - old_record.queue_size(), 4);
     delete tunnel;

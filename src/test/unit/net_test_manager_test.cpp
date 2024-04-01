@@ -22,13 +22,13 @@ TEST(proxy_unit_tests, test_ip) {
     quality_analyzer::uniq().delete_all_record();
     uint32_t distIp = st::utils::ipv4::str_to_ip("18.65.168.167");
     auto select_result = quality_analyzer::uniq().select_tunnels(distIp, {}, "");
-    net_test_manager::uniq().test(distIp, 443, select_result);
+    net_test_manager::uniq().add_test(distIp, 443, select_result);
     std::this_thread::sleep_for(std::chrono::seconds(5));
     select_result = quality_analyzer::uniq().select_tunnels(distIp, {}, "");
-    net_test_manager::uniq().test(distIp, 443, select_result);
+    net_test_manager::uniq().add_test(distIp, 443, select_result);
     std::this_thread::sleep_for(std::chrono::seconds(5));
     select_result = quality_analyzer::uniq().select_tunnels(distIp, {}, "");
-    net_test_manager::uniq().test(distIp, 443, select_result);
+    net_test_manager::uniq().add_test(distIp, 443, select_result);
     std::this_thread::sleep_for(std::chrono::seconds(5));
     apm_logger::disable();
 }

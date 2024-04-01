@@ -25,7 +25,7 @@ public:
     static net_test_manager &uniq();
     net_test_manager();
     virtual ~net_test_manager();
-    void test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt);
+    void add_test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt);
 
     //https handshake test 443 port
     void tls_handshake(uint32_t dist_ip, const net_test_callback &callback);
