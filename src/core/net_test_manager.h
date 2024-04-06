@@ -27,15 +27,12 @@ public:
     virtual ~net_test_manager();
     void add_test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt);
 
+    unordered_set<string> list_test_queue();
+
     //https handshake test 443 port
     void tls_handshake(uint32_t dist_ip, const net_test_callback &callback);
     void tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port, const std::string &test_ip,
                                   const net_test_callback &callback);
-    //http test 22 port
-    void http_random(uint32_t dist_ip, const net_test_callback &callback);
-    //random send package, receive response
-    void random_package(uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
-
 private:
     const string TLS_REQUEST_BASE64 =
             "FgMBAgABAAH8AwP3ahaW4vzdplXY2naKY77SC+CkSDclrkS+"

@@ -89,9 +89,11 @@ void proxy_server::config_console() {
             return make_pair(true, str);
         } else if (command == "proxy net test") {
             if (ip > 0) {
-//                net_test_manager::uniq().test(ip, port, 100);
+                //                net_test_manager::uniq().test(ip, port, 100);
                 return make_pair(true, "add net test " + ipStr);
             }
+        } else if (command == "proxy net test queue list") {
+            return make_pair(true, strutils::join(net_test_manager::uniq().list_test_queue(), "\n"));
         } else if (command == "proxy register area virtual port") {
             if (ip > 0 && port > 0 && !area.empty()) {
                 uint16_t virtual_port = virtual_port_manager::uniq().register_area_virtual_port(ip, port, area);

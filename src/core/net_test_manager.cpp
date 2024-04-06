@@ -8,7 +8,7 @@
 #include <boost/asio/ssl.hpp>
 net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }),
-      t_queue("st-proxy-net-test", 10, 30, [this](const st::task::priority_task<test_case> &task) {
+      t_queue("st-proxy-net-test", 4, 4, [this](const st::task::priority_task<test_case> &task) {
           const test_case &tc = task.get_input();
           this->do_test(tc.tunnel, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
               this->t_queue.complete(task);
@@ -77,6 +77,7 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
                                 logger::WARN << logTag << "receive test response error!"
                                              << string(ec.category().name()) + "/" + ec.message() << length << END;
                             }
+                            complete(false, true, time::now() - begin);
                         }
                     };
                     socket->async_receive(buffer(data.first, 1), receive_handler);
@@ -182,64 +183,7 @@ void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t
     }
 }
 
-void net_test_manager::random_package(uint32_t dist_ip, uint16_t port, const net_test_callback &callback) {
-    tcp::endpoint server_endpoint(make_address_v4(dist_ip), port);
-    auto *socket = new tcp::socket(ic);
-    uint32_t begin = time::now();
-    auto *timer = new deadline_timer(ic);
-    timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
-    timer->async_wait([=](boost::system::error_code ec) {
-        socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
-        socket->cancel(ec);
-        socket->close(ec);
-        ic.post([=]() { delete socket; });
-    });
-    socket->open(tcp::v4());
-    nat_utils::set_mark(1024, *socket);
-    auto complete = [=](bool valid, bool connected, uint32_t cost) {
-        delete timer;
-        callback(valid, connected, cost);
-    };
-    string logTag = "net test random package " + ipv4::ip_to_str(dist_ip) + ":" + to_string(port);
-    socket->async_connect(server_endpoint, [=](boost::system::error_code ec) {
-        if (!ec) {
-            auto send_handler = [=](boost::system::error_code ec, std::size_t length) {
-                if (!ec) {
-                    pair<uint8_t *, uint32_t> data = st::mem::pmalloc(2048);
-                    auto receive_handler = [=](boost::system::error_code ec, std::size_t length) {
-                        if (!ec) {
-                            st::mem::pfree(data);
-                            complete(true, true, time::now() - begin);
-                        } else {
-                            complete(false, true, time::now() - begin);
-                            if (ec != boost::asio::error::operation_aborted) {
-                                logger::WARN << logTag << "receive test response error!"
-                                             << string(ec.category().name()) + "/" + ec.message() << length << END;
-                            }
-                        }
-                    };
-                    socket->async_read_some(buffer(data.first, data.second), receive_handler);
-                } else {
-                    complete(false, true, time::now() - begin);
-                    if (ec != boost::asio::error::operation_aborted) {
-                        logger::WARN << logTag << "send test request error!" << ec.category().name() << ec.message()
-                                     << length << END;
-                    }
-                }
-            };
-            boost::asio::async_write(*socket, buffer(test_request, TEST_REQUEST_LEN),
-                                     boost::asio::transfer_at_least(TEST_REQUEST_LEN), send_handler);
-        } else {
-            if (ec != boost::asio::error::operation_aborted) {
-                logger::WARN << logTag << "connect error!" << ec.message() << END;
-            }
-            complete(false, false, time::now() - begin);
-        }
-    });
-}
-void net_test_manager::http_random(uint32_t dist_ip, const function<void(bool, bool, uint32_t)> &callback) {
-    random_package(dist_ip, 80, callback);
-}
+
 void net_test_manager::add_test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt) {
     if (port == 443 && !stt.empty()) {
         int max_score = stt[0].second.first;
@@ -249,8 +193,7 @@ void net_test_manager::add_test(uint32_t dist_ip, uint16_t port, const select_tu
                 vector<uint16_t> result;
                 stream_tunnel *tunnel = item.first;
 
-                for (auto i = record.first_package_failed() + record.first_package_success(); i < record.queue_limit();
-                     i++) {
+                for (auto i = record.first_package_failed() + record.first_package_success(); i < 1; i++) {
                     test_case tc;
                     tc.ip = dist_ip;
                     tc.port = port;
@@ -275,6 +218,7 @@ void net_test_manager::reset_tls_session_id() {
         tls_request[44 + i] = dis(gen);
     }
 }
+unordered_set<string> net_test_manager::list_test_queue() { return t_queue.get_pk_set(); }
 
 string test_case::key() const {
     return tunnel->id() + "->" + ipv4::ip_to_str(ip) + ":" + to_string(port) + "->" + to_string(tunnel_test_index);

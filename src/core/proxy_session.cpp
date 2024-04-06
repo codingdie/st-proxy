@@ -67,7 +67,7 @@ void proxy_session::start() {
 }
 
 void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_handler) {
-    if (try_connect_index < 2 && this->stage == CONNECTING) {
+    if (try_connect_index < 1 && this->stage == CONNECTING) {
         stream_tunnel *tunnel = selected_tunnels[try_connect_index];
         auto complete = [=](bool success) {
             if (success) {
@@ -94,8 +94,8 @@ void proxy_session::try_connect() {
         logger::traceId = id;
         uint64_t connect_cost = time::now() - begin;
         uint64_t try_connect_cost = time::now() - real_begin;
-        logger::DEBUG << id_str() << "connect" << (success ? "success!" : "failed!") << "cost" << connect_cost
-                      << try_connect_cost << END;
+        logger::INFO << id_str() << "connect" << (success ? "success!" : "failed!") << "cost" << connect_cost
+                     << try_connect_cost << END;
         if (success) {
             this->nextStage(STAGE::CONNECTED);
             read_client();
@@ -107,7 +107,6 @@ void proxy_session::try_connect() {
             shutdown();
         }
         apm_logger::perf("st-proxy-connect", dimensions({{"success", to_string(success)}}), connect_cost);
-        apm_logger::perf("st-proxy-try-connect", dimensions({{"success", to_string(success)}}), try_connect_cost);
     });
 }
 
@@ -311,7 +310,7 @@ void proxy_session::close(tcp::socket &socks, const std::function<void()> &compl
                 socks.close(ec);
                 completeHandler();
             });
-        }else{
+        } else {
             completeHandler();
         }
     });

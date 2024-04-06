@@ -3,6 +3,7 @@
 //
 
 #include "quality_analyzer.h"
+#include "command/dns_command.h"
 #include "config.h"
 #include "leveldb/cache.h"
 #include "net_test_manager.h"
@@ -129,7 +130,7 @@ void quality_analyzer::process_record(quality_record &record) {
     uint64_t cost = 0;
     uint32_t record_expire_time = 1000L * 60 * 60;
     if (record.type() != st::proxy::proto::IP_TUNNEL) {
-        record_expire_time = 1000L * 60 * 60;
+        record_expire_time = 1000L * 60 * 60 * 12;
     }
     for (auto i = 0; i < record.records_size() && i < record.queue_limit(); i++) {
         const session_record &s_record = record.records(i);
@@ -213,7 +214,7 @@ unordered_map<string, st::proxy::proto::quality_record> quality_analyzer::get_al
 }
 string quality_analyzer::analyse_ip_tunnels(uint32_t ip) {
     string str;
-    auto tunnels = select_tunnels(ip, {}, "");
+    auto tunnels = select_tunnels(ip, st::command::dns::reverse_resolve(ip), "");
     int i = 0;
     for (auto &it : tunnels) {
         stream_tunnel *tunnel = it.first;
@@ -282,11 +283,19 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, const v
              if (a.second.first == b.second.first) {
                  const proxy::proto::quality_record &record_a = a.second.second;
                  const proxy::proto::quality_record &record_b = b.second.second;
-                 if (record_a.first_package_success() != record_b.first_package_success()) {
-                     return record_a.first_package_success() > record_b.first_package_success();
+                 auto su_a = min(1U, record_a.first_package_success());
+                 auto su_b = min(1U, record_b.first_package_success());
+                 if (su_a != su_b) {
+                     return su_a > su_b;
                  } else {
-                     if (record_a.first_package_cost() != record_b.first_package_cost()) {
-                         return record_a.first_package_cost() < record_b.first_package_cost();
+                     auto f_a = record_a.first_package_failed();
+                     auto f_b = record_a.first_package_failed();
+                     if (f_a != f_b) {
+                         return f_b > f_a;
+                     } else {
+                         if (record_a.first_package_cost() != record_b.first_package_cost()) {
+                             return record_a.first_package_cost() < record_b.first_package_cost();
+                         }
                      }
                  }
                  // 基础策略排序优先级差不多情况下

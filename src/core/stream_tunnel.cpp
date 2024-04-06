@@ -22,7 +22,7 @@ bool stream_tunnel::in_whitelist(const string &domain) {
     for (auto str : whitelist) {
         if (str[0] == '*' && str[1] == '.') {
             auto rootDomain = str.substr(2, str.length() - 2);
-            if (rootDomain.length() > 0) {
+            if (!rootDomain.empty()) {
                 if (domain == rootDomain) {
                     return true;
                 }
