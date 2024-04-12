@@ -28,27 +28,29 @@
 
 class nat_utils {
 public:
-    static nat_utils INSTANCE;
-
     nat_utils();
+    static nat_utils &uniq();
 
     tcp::endpoint getProxyAddr(tcp::socket &socket);
 
     bool add_whitelist_ip(uint32_t ips);
     bool add_proxy_ip(uint32_t ips);
 
-    bool addTestDomain(string domain);
-    bool addTestIP(uint32_t ip);
+    bool add_test_domain(string domain);
 
-    bool addToIPSet(string name, uint32_t ips);
+    bool add_to_ip_set(string name, uint32_t ips);
 
-    bool addToIPSet(string name, string domain);
+    bool add_to_ip_set(string name, string domain);
 
     static void set_mark(uint32_t mark, tcp::socket &socket);
 
     static uint32_t get_mark(int fd);
+    bool intercept_nat_traffic(bool intercept);
+    bool add_nat_whitelist();
 
 private:
+    bool openwrt;
+
 #ifdef __APPLE__
     int pffd = -1;
 

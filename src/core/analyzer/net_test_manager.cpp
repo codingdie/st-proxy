@@ -10,12 +10,12 @@ net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }),
       t_queue("st-proxy-net-test", 4, 4, [this](const st::task::priority_task<test_case> &task) {
           const test_case &tc = task.get_input();
-          this->do_test(tc.tunnel, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
+          this->do_test(tc.proxy, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
               this->t_queue.complete(task);
               if (valid) {
-                  quality_analyzer::uniq().record_first_package_success(tc.ip, tc.tunnel, cost);
+                  quality_analyzer::uniq().record_first_package_success(tc.ip, tc.tunnel_id, cost);
               } else {
-                  quality_analyzer::uniq().record_failed(tc.ip, tc.tunnel);
+                  quality_analyzer::uniq().record_failed(tc.ip, tc.tunnel_id);
               }
           });
       }) {
@@ -164,17 +164,16 @@ void net_test_manager::tls_handshake(uint32_t dist_ip, const std::function<void(
         }
     });
 }
-void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t port,
-                               const net_test_callback &callback) {
+void net_test_manager::do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t port, const net_test_callback &callback) {
     net_test_callback complete = [=](bool valid, bool connected, uint32_t cost) {
         apm_logger::perf("st-proxy-net-test-single", {{}}, cost);
         callback(valid, connected, cost);
     };
     if (port == 443) {
-        if (tunnel->type == "DIRECT") {
+        if (proxy.ip.empty() || proxy.port == 0) {
             tls_handshake(dist_ip, complete);
         } else {
-            tls_handshake_with_socks(tunnel->ip, tunnel->port, st::utils::ipv4::ip_to_str(dist_ip), complete);
+            tls_handshake_with_socks(proxy.ip, proxy.port, st::utils::ipv4::ip_to_str(dist_ip), complete);
         }
     } else if (port == 80) {
         complete(false, false, 0);
@@ -183,32 +182,6 @@ void net_test_manager::do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t
     }
 }
 
-
-void net_test_manager::add_test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt) {
-    if (port == 443 && !stt.empty()) {
-        int max_score = stt[0].second.first;
-        for (const auto &item : stt) {
-            auto &record = item.second.second;
-            if (item.second.first == max_score) {
-                vector<uint16_t> result;
-                stream_tunnel *tunnel = item.first;
-
-                for (auto i = record.first_package_failed() + record.first_package_success(); i < 1; i++) {
-                    test_case tc;
-                    tc.ip = dist_ip;
-                    tc.port = port;
-                    tc.tunnel = tunnel;
-                    tc.tunnel_test_index = i;
-                    st::task::priority_task<test_case> task(
-                            tc, tunnel->type == "DIRECT" ? 0 : 100 + (record.queue_limit() - i), tc.key());
-                    t_queue.submit(task);
-                }
-            } else {
-                break;
-            }
-        }
-    }
-}
 
 void net_test_manager::reset_tls_session_id() {
     std::random_device rd;
@@ -219,7 +192,8 @@ void net_test_manager::reset_tls_session_id() {
     }
 }
 unordered_set<string> net_test_manager::list_test_queue() { return t_queue.get_pk_set(); }
+void net_test_manager::submit(const st::task::priority_task<test_case> &t) { t_queue.submit(t); }
 
 string test_case::key() const {
-    return tunnel->id() + "->" + ipv4::ip_to_str(ip) + ":" + to_string(port) + "->" + to_string(tunnel_test_index);
+    return tunnel_id + "->" + ipv4::ip_to_str(ip) + ":" + to_string(port) + "->" + to_string(tunnel_test_index);
 }

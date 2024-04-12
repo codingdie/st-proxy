@@ -5,19 +5,25 @@
 #ifndef ST_PROXY_NET_TEST_MANAGER_H
 #define ST_PROXY_NET_TEST_MANAGER_H
 
+#include "analyzer/quality_analyzer.h"
 #include "common.h"
-#include "quality_analyzer.h"
 #include "socks5_utils.h"
 #include "taskquque/task_queue.h"
 #include <functional>
 #define net_test_callback std::function<void(bool valid, bool connected, uint32_t cost)>
+#define select_tunnels_tesult vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>>
+class socks5_proxy {
+public:
+    string ip;
+    uint16_t port;
+};
 class test_case {
 public:
     uint32_t ip;
     uint16_t port;
-    stream_tunnel *tunnel = nullptr;
+    socks5_proxy proxy;
     uint16_t tunnel_test_index;
-
+    string tunnel_id;
     string key() const;
 };
 class net_test_manager {
@@ -25,14 +31,14 @@ public:
     static net_test_manager &uniq();
     net_test_manager();
     virtual ~net_test_manager();
-    void add_test(uint32_t dist_ip, uint16_t port, const select_tunnels_tesult &stt);
-
+    void submit(const st::task::priority_task<test_case> &t);
     unordered_set<string> list_test_queue();
 
     //https handshake test 443 port
     void tls_handshake(uint32_t dist_ip, const net_test_callback &callback);
     void tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port, const std::string &test_ip,
                                   const net_test_callback &callback);
+
 private:
     const string TLS_REQUEST_BASE64 =
             "FgMBAgABAAH8AwP3ahaW4vzdplXY2naKY77SC+CkSDclrkS+"
@@ -56,7 +62,7 @@ private:
     std::unordered_map<string, test_case> test_queue;
     thread th;
     st::task::queue<test_case> t_queue;
-    void do_test(stream_tunnel *tunnel, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
+    void do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
     void reset_tls_session_id();
 };
 

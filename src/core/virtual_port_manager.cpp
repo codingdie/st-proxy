@@ -47,7 +47,7 @@ uint16_t virtual_port_manager::register_area_virtual_port(uint32_t ip, uint16_t 
         }
     }
     issued_port++;
-    nat_utils::INSTANCE.add_proxy_ip(ip);
+    nat_utils::uniq().add_proxy_ip(ip);
     virtual_port_map.emplace(build_key(ip, issued_port), make_pair(area, port));
     return issued_port;
 }

@@ -14,9 +14,7 @@ void startServer(const string &confPath) {
     server.start();
 }
 
-void serviceScript(const string confPath, const string op) {
-    shell::exec("sh " + confPath + "/service/" + op + ".sh");
-}
+void serviceScript(const string confPath, const string op) { shell::exec("sh " + confPath + "/service/" + op + ".sh"); }
 
 int main(int argc, char *argv[]) {
     bool inputConfigPath = false;

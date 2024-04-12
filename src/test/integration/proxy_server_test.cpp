@@ -31,7 +31,7 @@ protected:
 };
 
 TEST_F(IntegrationTests, testCURL) {
-    nat_utils::INSTANCE.addTestDomain("www.google.com");
+    nat_utils::uniq().add_test_domain("www.google.com");
     string result;
     st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
                            result);

@@ -4,16 +4,14 @@
 
 #include "proxy_server.h"
 #include "nat_utils.h"
-#include "net_test_manager.h"
-#include "quality_analyzer.h"
 #include "session_manager.h"
 #include "virtual_port_manager.h"
 #include <boost/process.hpp>
 #include <boost/thread.hpp>
+#include "console/proxy_console.h"
 using namespace std;
 using namespace st::proxy;
-proxy_server::proxy_server()
-    : state(0), manager(nullptr), console(config::uniq().console_ip, config::uniq().console_port) {
+proxy_server::proxy_server() : state(0), manager(nullptr) {
     unsigned int cpu_count = std::thread::hardware_concurrency();
     auto worker_num = 2 + std::max(1U, cpu_count * 2);
     for (auto i = 0; i < worker_num; i++) {
@@ -41,118 +39,19 @@ proxy_server::proxy_server()
                       << e.what() << END;
         exit(1);
     }
-    config_console();
-}
-void proxy_server::config_console() {
-    console.desc.add_options()("ip", boost::program_options::value<string>()->default_value(""), "ip");
-    console.desc.add_options()("port", boost::program_options::value<uint16_t>()->default_value(443), "port");
-    console.desc.add_options()("domain", boost::program_options::value<string>()->default_value(""), "domain");
-    console.desc.add_options()("area", boost::program_options::value<string>()->default_value(""), "area");
-    console.impl = [](const vector<string> &commands, const boost::program_options::variables_map &options) {
-        auto command = utils::strutils::join(commands, " ");
-        std::pair<bool, std::string> result = make_pair(false, "not invalid command");
-        string domain = options["domain"].as<string>();
-        string area = options["area"].as<string>();
-        string ipStr = options["ip"].as<string>();
-        uint32_t ip = 0;
-        uint16_t port = options["port"].as<uint16_t>();
-        if (!ipStr.empty()) {
-            ip = ipv4::str_to_ip(ipStr);
-        }
-        if (command == "proxy analyse ip tunnels" && ip > 0) {
-            return make_pair(true, quality_analyzer::uniq().analyse_ip_tunnels(ip));
-        } else if (command == "proxy analyse ip" && ip > 0) {
-            return make_pair(true, quality_analyzer::uniq().analyse_ip(ip));
-        } else if (command == "proxy analyse tunnel") {
-            return make_pair(true, quality_analyzer::uniq().analyse_tunnel());
-        } else if (command == "proxy analyse delete") {
-            if (!domain.empty()) {
-                quality_analyzer::uniq().delete_record(domain);
-                return make_pair(false, string(domain));
-            }
-            if (ip > 0) {
-                quality_analyzer::uniq().delete_record(ip);
-                return make_pair(false, ipStr);
-            }
-        } else if (command == "proxy analyse delete all") {
-            quality_analyzer::uniq().delete_all_record();
-            return make_pair(true, string("delete all!"));
-
-        } else if (command == "proxy blacklist") {
-            string str;
-            //            vector<std::string> ips = st::proxy::shm::uniq().forbid_ip_list();
-            //            for (const auto &blackIp : ips) {
-            //                auto domains = st::dns::shm::share().reverse_resolve_all(ipv4::str_to_ip(blackIp));
-            //                str.append(blackIp).append("\t").append(join(domains, ",")).append("\n");
-            //            }
-            strutils::trim(str);
-            return make_pair(true, str);
-        } else if (command == "proxy net test") {
-            if (ip > 0) {
-                //                net_test_manager::uniq().test(ip, port, 100);
-                return make_pair(true, "add net test " + ipStr);
-            }
-        } else if (command == "proxy net test queue list") {
-            return make_pair(true, strutils::join(net_test_manager::uniq().list_test_queue(), "\n"));
-        } else if (command == "proxy register area virtual port") {
-            if (ip > 0 && port > 0 && !area.empty()) {
-                uint16_t virtual_port = virtual_port_manager::uniq().register_area_virtual_port(ip, port, area);
-                return make_pair(true, to_string(virtual_port));
-            }
-        }
-        return result;
-    };
-    console.start();
 }
 
 
 bool proxy_server::init() {
     srand(time::now());
-    if (intercept_nat_traffic(false)) {
-        if (add_nat_whitelist()) {
-            if (intercept_nat_traffic(true)) {
+    if (nat_utils::uniq().intercept_nat_traffic(false)) {
+        if (nat_utils::uniq().add_nat_whitelist()) {
+            if (nat_utils::uniq().intercept_nat_traffic(true)) {
                 return true;
             }
         }
     }
     return false;
-}
-
-bool proxy_server::add_nat_whitelist() {
-    for (auto ip : st::proxy::config::uniq().ip_whitelist) {
-        if (!nat_utils::INSTANCE.add_whitelist_ip(ip)) {
-            return false;
-        }
-        logger::INFO << "add nat whitelist" << ipv4::ip_to_str(ip) << END;
-    }
-    return true;
-}
-
-
-bool proxy_server::intercept_nat_traffic(bool intercept) {
-    auto &targets = config::uniq().proxy_target;
-    string proxy_dist_port = "";
-    if (targets.find("all") == targets.end()) {
-        if (targets.find("dns") != targets.end()) {
-            proxy_dist_port += "53,853,";
-        }
-        if (targets.find("http") != targets.end()) {
-            proxy_dist_port += "80,443,";
-        }
-    }
-    if (!proxy_dist_port.empty()) {
-        proxy_dist_port = proxy_dist_port.substr(0, proxy_dist_port.size() - 1);
-    }
-    string command = "sh " + st::proxy::config::uniq().base_conf_dir + "/nat/rule.sh " +
-                     (intercept ? "intercept" : "clean") + " " + proxy_dist_port;
-    string result;
-    string error;
-    if (shell::exec(command, result, error)) {
-        return true;
-    } else {
-        logger::ERROR << "intercept nat traffic error!" << error << END;
-        return false;
-    }
 }
 
 
@@ -185,6 +84,8 @@ void proxy_server::start() {
     logger::INFO << "st-proxy start with" << worker_ctxs.size() - 2 << "worker, listen at"
                  << st::proxy::config::uniq().ip + ":" + to_string(st::proxy::config::uniq().port) << END;
     this->state = 1;
+    proxy_console console;
+    console.start();
     for (auto &th : threads) {
         th.join();
     }
@@ -201,7 +102,7 @@ void proxy_server::shutdown() {
     }
     delete schedule_timer;
     this->schedule_timer = nullptr;
-    intercept_nat_traffic(false);
+    nat_utils::uniq().intercept_nat_traffic(false);
 }
 
 void proxy_server::wait_start() {
@@ -231,7 +132,7 @@ void proxy_server::schedule() {
     schedule_timer->expires_from_now(boost::posix_time::seconds(60));
     schedule_timer->async_wait([&](boost::system::error_code ec) {
         config::uniq().parse_whitelist_to_ips();
-        add_nat_whitelist();
+        nat_utils::uniq().add_nat_whitelist();
         this->schedule();
     });
 }

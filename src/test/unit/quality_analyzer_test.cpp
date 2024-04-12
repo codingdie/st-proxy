@@ -1,8 +1,8 @@
 //
 // Created by codingdie on 9/23/22.
 //
+#include "analyzer/quality_analyzer.h"
 #include "config.h"
-#include "quality_analyzer.h"
 #include "st.h"
 #include "utils/shm/proxy_shm.h"
 #include <gtest/gtest.h>
@@ -10,7 +10,7 @@
 //    st::proxy::config::uniq().load("../confs/test");
 //    auto tunnel = st::proxy::config::uniq().tunnels[1];
 //    int dist_ip = 3;
-//    auto old_record = quality_analyzer::uniq().get_record(dist_ip, tunnel);
+//    auto old_record = quality_analyzer::uniq().get_tunnel_record(dist_ip, tunnel);
 //    for (auto i = 0; i < st::proxy::config::uniq().tunnels.size(); i++) {
 //        quality_analyzer::uniq().record_failed(dist_ip, tunnel);
 //    }
@@ -24,14 +24,14 @@ TEST(proxy_unit_tests, test_quality_analyzer) {
     st::proxy::config::uniq().load("../confs/test");
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
-    auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 9);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 90);
-    quality_analyzer::uniq().record_failed(distIp, tunnel);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 30);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 999);
+    auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel->id());
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 9);
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 90);
+    quality_analyzer::uniq().record_failed(distIp, tunnel->id());
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 30);
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 999);
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    auto record = quality_analyzer::uniq().get_record(distIp, tunnel);
+    auto record = quality_analyzer::uniq().get_record(distIp, tunnel->id());
     ASSERT_EQ(record.queue_size() - old_record.queue_size(), 5);
     auto s_record = record.records((record.queue_size() - 1) % quality_analyzer::IP_TUNNEL_TEST_COUNT);
     ASSERT_TRUE(s_record.success());
@@ -49,13 +49,13 @@ TEST(proxy_unit_tests, test_quality_analyzer_async) {
     quality_analyzer::uniq().clear();
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
-    auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 90);
-    quality_analyzer::uniq().record_failed(distIp, tunnel);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 30);
-    quality_analyzer::uniq().record_first_package_success(distIp, tunnel, 60);
+    auto old_record = quality_analyzer::uniq().get_record(distIp, tunnel->id());
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 90);
+    quality_analyzer::uniq().record_failed(distIp, tunnel->id());
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 30);
+    quality_analyzer::uniq().record_first_package_success(distIp, tunnel->id(), 60);
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    auto record = quality_analyzer::uniq().get_record(distIp, tunnel);
+    auto record = quality_analyzer::uniq().get_record(distIp, tunnel->id());
     ASSERT_EQ(record.queue_size() - old_record.queue_size(), 4);
     delete tunnel;
 }
@@ -64,10 +64,10 @@ TEST(proxy_unit_tests, test_quality_analyzer_async) {
 TEST(proxy_unit_tests, test_quality_analyzer_speed) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);
     int distIp = 3;
-    quality_analyzer::uniq().record_failed(distIp, tunnel);
+    quality_analyzer::uniq().record_failed(distIp, tunnel->id());
     uint64_t begin = time::now();
     for (int i = 0; i < 100000; i++) {
-        quality_analyzer::uniq().get_record(distIp, tunnel);
+        quality_analyzer::uniq().get_record(distIp, tunnel->id());
     }
     logger::INFO << "cost" << time::now() - begin << END;
     delete tunnel;

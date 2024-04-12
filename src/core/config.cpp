@@ -3,7 +3,7 @@
 //
 
 #include "config.h"
-#include "quality_analyzer.h"
+#include "analyzer/quality_analyzer.h"
 using namespace st::proxy;
 using namespace st::utils;
 void config::load(const string &configPathInput) {

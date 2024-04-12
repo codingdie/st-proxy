@@ -3,9 +3,9 @@
 //
 
 #include "nat_utils.h"
+#include "config.h"
 #include <arpa/inet.h>
 #include <stdio.h>
-
 #ifdef linux
 
 #include <linux/netfilter_ipv4.h>
@@ -45,6 +45,10 @@ tcp::endpoint NATUtils::getDstAddrForMac(__uint32_t clientIp, __uint16_t clientP
 #endif
 
 
+nat_utils &nat_utils::uniq() {
+    static nat_utils vp;
+    return vp;
+}
 tcp::endpoint nat_utils::getProxyAddr(boost::asio::ip::tcp::socket &socket) {
 #ifdef __APPLE__
     boost::system::error_code ec;
@@ -81,39 +85,39 @@ tcp::endpoint nat_utils::getProxyAddr(boost::asio::ip::tcp::socket &socket) {
 }
 
 nat_utils::nat_utils() {
+    openwrt = file::exists("/etc/openwrt_release");
 #ifdef __APPLE__
     pffd = open("/dev/pf", O_RDWR | O_CLOEXEC);
 #endif
 }
 
-bool nat_utils::add_whitelist_ip(uint32_t ips) { return addToIPSet("st-proxy-whitelist", ips); }
+bool nat_utils::add_whitelist_ip(uint32_t ips) { return add_to_ip_set("st-proxy-whitelist", ips); }
 
-bool nat_utils::add_proxy_ip(uint32_t ips) { return addToIPSet("st-proxy-list", ips); }
+bool nat_utils::add_proxy_ip(uint32_t ips) { return add_to_ip_set("st-proxy-list", ips); }
 
-bool nat_utils::addTestDomain(string domain) { return addToIPSet("st-proxy-test", domain); }
-bool nat_utils::addTestIP(uint32_t ip) { return addToIPSet("st-proxy-test", ip); }
+bool nat_utils::add_test_domain(string domain) { return add_to_ip_set("st-proxy-test", domain); }
 
-bool nat_utils::addToIPSet(string name, string domain) {
+bool nat_utils::add_to_ip_set(string name, string domain) {
     bool result = true;
     for (auto ip : st::utils::dns::query(domain)) {
-        result &= addToIPSet(name, ip);
+        result &= add_to_ip_set(name, ip);
     }
     return result;
 }
-bool nat_utils::addToIPSet(string name, uint32_t ip) {
+bool nat_utils::add_to_ip_set(string name, uint32_t ips) {
     string result;
     string error;
 #ifdef __APPLE__
     bool success = shell::exec("pfctl -t " + name + " -T add " + ipv4::ip_to_str(ip), result, error);
 #endif
 #ifdef linux
-    auto command = "/usr/sbin/ipset add -! " + name + " " + ipv4::ip_to_str(ip);
+    auto command = string(openwrt ? "" : "sudo ") + "/usr/sbin/ipset add -! " + name + " " + ipv4::ip_to_str(ips);
     bool success = shell::exec(command, result, error);
 #endif
     if (!success) {
-        logger::ERROR << "addToIPSet error!" << name << ipv4::ip_to_str(ip) << error << END;
+        logger::ERROR << "add_to_ip_set error!" << name << ipv4::ip_to_str(ips) << error << END;
     } else {
-        logger::DEBUG << "addToIPSet success!" << name << ipv4::ip_to_str(ip) << result << END;
+        logger::DEBUG << "add_to_ip_set success!" << name << ipv4::ip_to_str(ips) << result << END;
     }
     return success;
 }
@@ -139,4 +143,44 @@ uint32_t nat_utils::get_mark(int fd) {
 }
 
 
-nat_utils nat_utils::INSTANCE;
+bool nat_utils::add_nat_whitelist() {
+    for (auto ip : st::proxy::config::uniq().ip_whitelist) {
+        if (!nat_utils::uniq().add_whitelist_ip(ip)) {
+            return false;
+        }
+        logger::INFO << "add nat whitelist" << ipv4::ip_to_str(ip) << END;
+    }
+    return true;
+}
+
+
+bool nat_utils::intercept_nat_traffic(bool intercept) {
+    if (intercept) {
+        if (!add_nat_whitelist()) {
+            return false;
+        }
+    }
+    auto &targets = st::proxy::config::uniq().proxy_target;
+    string proxy_dist_port;
+    if (targets.find("all") == targets.end()) {
+        if (targets.find("dns") != targets.end()) {
+            proxy_dist_port += "53,853,";
+        }
+        if (targets.find("http") != targets.end()) {
+            proxy_dist_port += "80,443,";
+        }
+    }
+    if (!proxy_dist_port.empty()) {
+        proxy_dist_port = proxy_dist_port.substr(0, proxy_dist_port.size() - 1);
+    }
+    string command = string(openwrt ? "" : "sudo ") + "sh " + st::proxy::config::uniq().base_conf_dir +
+                     "/nat/rule.sh " + (intercept ? "intercept" : "clean") + " " + proxy_dist_port;
+    string result;
+    string error;
+    if (shell::exec(command, result, error)) {
+        return true;
+    } else {
+        logger::ERROR << "intercept nat traffic error!" << error << END;
+        return false;
+    }
+}

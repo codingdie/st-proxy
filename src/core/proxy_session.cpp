@@ -3,13 +3,11 @@
 //
 
 #ifdef linux
-
-#include "quality_analyzer.h"
+#include "analyzer/quality_analyzer.h"
 #endif
 
 #include "command/dns_command.h"
 #include "nat_utils.h"
-#include "net_test_manager.h"
 #include "proxy_session.h"
 #include "virtual_port_manager.h"
 #include <map>
@@ -34,7 +32,7 @@ void proxy_session::start() {
         shutdown();
         return;
     }
-    this->dist_end = nat_utils::INSTANCE.getProxyAddr(client_sock);
+    this->dist_end = nat_utils::uniq().getProxyAddr(client_sock);
     if (this->dist_end.address().to_v4().to_uint() == 0) {
         logger::ERROR << "get dist addr failed!" << END;
         shutdown();
@@ -102,7 +100,7 @@ void proxy_session::try_connect() {
             read_proxy();
         } else {
             for (auto i = 0; i <= try_connect_index && i < selected_tunnels.size(); i++) {
-                quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), selected_tunnels[i]);
+                quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), selected_tunnels[i]->id());
             }
             shutdown();
         }
@@ -111,9 +109,8 @@ void proxy_session::try_connect() {
 }
 
 void proxy_session::select_tunnels() {
-    uint32_t dist_ip = dist_end.address().to_v4().to_uint();
-    auto select_result = quality_analyzer::uniq().select_tunnels(dist_ip, dist_hosts, prefer_area);
-    net_test_manager::uniq().add_test(dist_ip, dist_end.port(), select_result);
+    auto select_result = quality_analyzer::uniq().select_tunnels(dist_end.address().to_v4().to_uint(), dist_end.port(),
+                                                                 dist_hosts, prefer_area);
     for (const auto &it : select_result) {
         stream_tunnel *tunnel = it.first;
         selected_tunnels.emplace_back(tunnel);
@@ -255,32 +252,33 @@ void proxy_session::read_proxy() {
         shutdown();
         return;
     }
-    proxy_sock.async_read_some(buffer(in_buffer, sizeof(uint8_t) * PROXY_BUFFER_SIZE), [=](boost::system::error_code
-                                                                                                   error,
-                                                                                           size_t size) {
-        logger::traceId = this->id;
-        auto first_packet_time = st::utils::time::now() - begin;
+    proxy_sock.async_read_some(
+            buffer(in_buffer, sizeof(uint8_t) * PROXY_BUFFER_SIZE), [=](boost::system::error_code error, size_t size) {
+                logger::traceId = this->id;
+                auto first_packet_time = st::utils::time::now() - begin;
 
-        if (read_counter.total() == 0) {
-            apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}), first_packet_time);
-            if (error) {
-                if (dist_end.port() == 80 || dist_end.port() == 443) {
-                    quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(), connected_tunnel);
+                if (read_counter.total() == 0) {
+                    apm_logger::perf("st-proxy-first-package", dimensions({{"success", to_string(!error)}}),
+                                     first_packet_time);
+                    if (error) {
+                        if (dist_end.port() == 80 || dist_end.port() == 443) {
+                            quality_analyzer::uniq().record_failed(dist_end.address().to_v4().to_uint(),
+                                                                   connected_tunnel->id());
+                        }
+                        logger::DEBUG << this->id_str() << "first package failed!" << error.message() << END;
+                    } else {
+                        quality_analyzer::uniq().record_first_package_success(
+                                dist_end.address().to_v4().to_uint(), connected_tunnel->id(), first_packet_time);
+                    }
                 }
-                logger::DEBUG << this->id_str() << "first package failed!" << error.message() << END;
-            } else {
-                quality_analyzer::uniq().record_first_package_success(dist_end.address().to_v4().to_uint(),
-                                                                      connected_tunnel, first_packet_time);
-            }
-        }
 
-        if (!error) {
-            read_counter += size;
-            write_client(size);
-        } else {
-            process_error(error, "read_proxy");
-        }
-    });
+                if (!error) {
+                    read_counter += size;
+                    write_client(size);
+                } else {
+                    process_error(error, "read_proxy");
+                }
+            });
 }
 
 void proxy_session::read_proxy(size_t size, const std::function<void(boost::system::error_code error)> &complete) {
