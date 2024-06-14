@@ -191,7 +191,6 @@ void net_test_manager::reset_tls_session_id() {
         tls_request[44 + i] = dis(gen);
     }
 }
-unordered_set<string> net_test_manager::list_test_queue() { return t_queue.get_pk_set(); }
 void net_test_manager::submit(const st::task::priority_task<test_case> &t) { t_queue.submit(t); }
 
 string test_case::key() const {

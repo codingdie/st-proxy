@@ -32,7 +32,6 @@ public:
     net_test_manager();
     virtual ~net_test_manager();
     void submit(const st::task::priority_task<test_case> &t);
-    unordered_set<string> list_test_queue();
 
     //https handshake test 443 port
     void tls_handshake(uint32_t dist_ip, const net_test_callback &callback);
