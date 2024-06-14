@@ -2,7 +2,8 @@
   "ip": "127.0.0.1",
   "port": "40000",
   "log": {
-    "level": 0
+    "level": 1,
+    "tag": "st-proxy"
   },
   "tunnels": [
     {

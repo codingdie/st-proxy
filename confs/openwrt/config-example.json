@@ -2,16 +2,8 @@
   "ip": "0.0.0.0",
   "port": "40000",
   "log": {
-    "level": 0,
-    "raw_log_server": {
-      "ip": "192.168.31.20",
-      "port": 30500,
-      "tag": "st-proxy"
-    },
-    "apm_log_server": {
-      "ip": "192.168.31.20",
-      "port": 30501
-    }
+    "level": 1,
+    "tag": "st-proxy"
   },
   "tunnels": [
     {

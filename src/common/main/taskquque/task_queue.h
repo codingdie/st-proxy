@@ -101,10 +101,6 @@ namespace st {
                     return false;
                 }
             }
-            std::unordered_set<std::string> get_pk_set() {
-                std::lock_guard<std::mutex> lg(mutex);
-                return task_keys;
-            }
             void complete(const st::task::priority_task<input> &task) {
                 std::lock_guard<std::mutex> lg(mutex);
                 task_keys.erase(task.pk);
