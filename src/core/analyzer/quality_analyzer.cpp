@@ -19,9 +19,9 @@ void quality_analyzer::record_failed(uint32_t dist_ip, const string &tunnel_id) 
         session_record se;
         se.set_first_package_cost(0);
         se.set_success(false);
-        auto tunnel_record = get_record(tunnel_id);
-        auto ip_record = get_record(dist_ip);
-        auto ip_tunnel_record = get_record(dist_ip, tunnel_id);
+        auto tunnel_record = get_tunnel_record(tunnel_id);
+        auto ip_record = get_ip_record(dist_ip);
+        auto ip_tunnel_record = get_ip_tunnel_record(dist_ip, tunnel_id);
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel_id), ip_tunnel_record, se);
         bool ip_tunnel_all_failed = check_all_failed(ip_tunnel_record);
         if (!has_record_ip_failed(dist_ip, tunnel_record) && ip_tunnel_all_failed) {
@@ -55,8 +55,8 @@ void quality_analyzer::record_first_package_success(uint32_t dist_ip, const stri
         se.set_first_package_cost(cost);
         se.set_success(true);
         auto tunnel_record = get_tunnel_record(tunnel_id);
-        auto ip_record = get_record(dist_ip);
-        auto ip_tunnel_record = get_record(dist_ip, tunnel_id);
+        auto ip_record = get_ip_record(dist_ip);
+        auto ip_tunnel_record = get_ip_tunnel_record(dist_ip, tunnel_id);
         add_session_record(tunnel_id, tunnel_record, se);
         add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se);
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel_id), ip_tunnel_record, se);
@@ -96,15 +96,15 @@ st::proxy::proto::quality_record quality_analyzer::get_tunnel_record(const strin
     return record;
 }
 
-quality_record quality_analyzer::get_record(uint32_t dist_ip) {
+quality_record quality_analyzer::get_ip_record(uint32_t dist_ip) {
     auto key = build_key(dist_ip);
     quality_record record = get_record(key);
-    record.set_queue_limit(std::max((uint64_t) st::proxy::config::uniq().tunnels.size(), (uint64_t) 3U));
+    record.set_queue_limit(std::max((uint32_t) st::proxy::config::uniq().tunnels.size(), (uint32_t) 3U));
     record.set_type(st::proxy::proto::IP);
     process_record(record);
     return record;
 }
-quality_record quality_analyzer::get_record(uint32_t dist_ip, const string &tunnel_id) {
+quality_record quality_analyzer::get_ip_tunnel_record(uint32_t dist_ip, const string &tunnel_id) {
     auto begin = time::now();
     auto key = build_key(dist_ip, tunnel_id);
     quality_record record = get_record(key);
@@ -239,7 +239,7 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, uint16_
         if (inArea) {
             score += 10;
         }
-        const auto &ip_tunnel_record = quality_analyzer::uniq().get_record(dist_ip, tunnel->id());
+        const auto &ip_tunnel_record = quality_analyzer::uniq().get_ip_tunnel_record(dist_ip, tunnel->id());
         const auto &tunnel_record = quality_analyzer::uniq().get_tunnel_record(tunnel->id());
         if (ip_tunnel_record.first_package_success() == 0 && quality_analyzer::check_all_failed(tunnel_record)) {
             score -= 100;

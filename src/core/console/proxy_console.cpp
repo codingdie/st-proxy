@@ -119,7 +119,7 @@ string proxy_console::analyse_tunnel() {
 }
 string proxy_console::analyse_ip(uint32_t ip) {
     string str;
-    auto ip_record = quality_analyzer::uniq().get_record(ip);
+    auto ip_record = quality_analyzer::uniq().get_ip_record(ip);
     str.append(utils::ipv4::ip_to_str(ip))
             .append("\t")
             .append(to_string(ip_record.first_package_success()))

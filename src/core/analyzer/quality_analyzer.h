@@ -29,11 +29,11 @@ public:
 
     void record_first_package_success(uint32_t dist_ip, const string &tunnel, uint64_t cost);
 
-    st::proxy::proto::quality_record get_record(uint32_t dist_ip);
+    st::proxy::proto::quality_record get_ip_record(uint32_t dist_ip);
 
     st::proxy::proto::quality_record get_tunnel_record(const string &tunnel);
 
-    st::proxy::proto::quality_record get_record(uint32_t dist_ip, const string &tunnel);
+    st::proxy::proto::quality_record get_ip_tunnel_record(uint32_t dist_ip, const string &tunnel_id);
 
     void delete_record(const string &domain);
 
