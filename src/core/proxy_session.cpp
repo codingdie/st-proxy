@@ -104,7 +104,9 @@ void proxy_session::try_connect() {
             }
             shutdown();
         }
-        apm_logger::perf("st-proxy-connect", dimensions({{"success", to_string(success)}}), connect_cost);
+        apm_logger::perf("st-proxy-connect",
+                         dimensions({{"success", to_string(success)}, {"prefer_area", this->prefer_area}}),
+                         connect_cost);
     });
 }
 

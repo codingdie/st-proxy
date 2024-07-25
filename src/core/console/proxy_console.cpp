@@ -58,6 +58,26 @@ void proxy_console::start() {
                 uint16_t virtual_port = virtual_port_manager::uniq().register_area_virtual_port(ip, port, area);
                 return make_pair(true, to_string(virtual_port));
             }
+        } else if (command == "proxy ip available areas") {
+            if (ip > 0) {
+                string str;
+                auto tunnels =
+                        quality_analyzer::uniq().select_tunnels(ip, 0, st::command::dns::reverse_resolve(ip), "");
+                int i = 0;
+                unordered_set<string> areas;
+                for (auto &it : tunnels) {
+                    auto tunnel = it.first;
+                    const auto &tunnel_record = it.second.second;
+                    if (tunnel->type == "DIRECT") {
+                        continue;
+                    }
+                    if (tunnel_record.first_package_success() == 0 && tunnel_record.first_package_failed() > 0) {
+                        continue;
+                    }
+                    areas.emplace(tunnel->area);
+                }
+                return make_pair(true, strutils::join(areas, ","));
+            }
         }
         return result;
     };
