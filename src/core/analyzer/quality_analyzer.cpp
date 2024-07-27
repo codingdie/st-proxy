@@ -92,7 +92,7 @@ st::proxy::proto::quality_record quality_analyzer::get_tunnel_record(const strin
     record.set_queue_limit(TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::TUNNEL);
     process_record(record);
-    apm_logger::perf("st-proxy-get-tunnel-record", {}, time::now() - begin);
+    apm_logger::perf("st-proxy-get-tunnel-record", {}, time::now() - begin, 10);
     return record;
 }
 
@@ -111,7 +111,7 @@ quality_record quality_analyzer::get_ip_tunnel_record(uint32_t dist_ip, const st
     record.set_queue_limit(IP_TUNNEL_TEST_COUNT);
     record.set_type(st::proxy::proto::IP_TUNNEL);
     process_record(record);
-    apm_logger::perf("st-proxy-get-ip-tunnel-record", {}, time::now() - begin);
+    apm_logger::perf("st-proxy-get-ip-tunnel-record", {}, time::now() - begin, 10);
     return record;
 }
 
