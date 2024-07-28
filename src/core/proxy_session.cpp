@@ -379,8 +379,12 @@ void proxy_session::write_client(const string &tag, size_t writeSize, const std:
 proxy_session::~proxy_session() {
     logger::traceId = id;
     logger::INFO << id_str() << "disconnect" << transmit_log() << END;
-    mem::pfree(in_buffer, PROXY_BUFFER_SIZE);
-    mem::pfree(out_buffer, PROXY_BUFFER_SIZE);
+    if (in_buffer != nullptr) {
+        mem::pfree(in_buffer, PROXY_BUFFER_SIZE);
+    }
+    if (out_buffer != nullptr) {
+        mem::pfree(out_buffer, PROXY_BUFFER_SIZE);
+    }
 }
 
 string proxy_session::id_str() {

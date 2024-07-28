@@ -10,7 +10,7 @@
 class proxy_session {
 public:
     enum STAGE { CONNECTING, CONNECTED, DESTROYING, DESTROYED };
-    static const uint32_t PROXY_BUFFER_SIZE = 1024 * 64;
+    static const uint32_t PROXY_BUFFER_SIZE = 1024 * 16;
     uint64_t id;
     uint16_t port = 0;
     st::utils::counters::interval read_counter;

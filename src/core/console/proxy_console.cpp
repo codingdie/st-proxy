@@ -63,14 +63,10 @@ void proxy_console::start() {
                 string str;
                 auto tunnels =
                         quality_analyzer::uniq().select_tunnels(ip, 0, st::command::dns::reverse_resolve(ip), "");
-                int i = 0;
                 unordered_set<string> areas;
                 for (auto &it : tunnels) {
                     auto tunnel = it.first;
                     const auto &tunnel_record = it.second.second;
-                    if (tunnel->type == "DIRECT") {
-                        continue;
-                    }
                     if (tunnel_record.first_package_success() == 0 && tunnel_record.first_package_failed() > 0) {
                         continue;
                     }
