@@ -54,6 +54,10 @@ void config::load(const string &configPathInput) {
             this->area_ip_config.load(area_ip_config_node.get());
             areaip::manager::uniq().config(this->area_ip_config);
         }
+        auto net_test_config_node = tree.get_child_optional("net_test_config");
+        if (net_test_config_node.is_initialized()) {
+            this->net_test_config.load(net_test_config_node.get());
+        }
     } else {
         logger::INFO << "st-proxy config file not exit!" << configPath << END;
         exit(1);

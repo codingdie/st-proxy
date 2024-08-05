@@ -30,15 +30,15 @@ ENDIF ()
 
 
 #st-proxy target
-file(GLOB_RECURSE SOURCE_FILES src/core/*.cpp  src/core/*.cc)
+file(GLOB_RECURSE SOURCE_FILES src/core/*.cpp src/core/*.cc)
 file(GLOB_RECURSE SOURCE_COMMON_FILES src/common/main/*.cpp src/common/main/*.cc)
 file(GLOB_RECURSE SOURCE_INTEGRATION_TEST_FILES src/test/integration/*.cpp)
 file(GLOB_RECURSE SOURCE_UNIT_TEST_FILES src/test/unit/*.cpp)
 file(GLOB_RECURSE SOURCE_ST_UNIT_TEST_FILES src/common/test/*.cpp)
 
 add_executable(st-proxy src/server/main.cpp ${SOURCE_FILES} ${SOURCE_COMMON_FILES})
-set(OTHER_LIBRARIES "rt" "leveldb::leveldb")
-target_link_libraries(st-proxy ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES} ${Protobuf_LITE_LIBRARY})
+set(OTHER_LIBRARIES "rt" "leveldb::leveldb" ${Protobuf_LITE_LIBRARY})
+target_link_libraries(st-proxy ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES})
 
 
 #install

@@ -37,6 +37,7 @@ public:
     void tls_handshake(uint32_t dist_ip, const net_test_callback &callback);
     void tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port, const std::string &test_ip,
                                   const net_test_callback &callback);
+    vector<task::priority_task<test_case>> current_all_test();
 
 private:
     const string TLS_REQUEST_BASE64 =
@@ -51,14 +52,12 @@ private:
             "CJ5vFNDb5g0pXUdjCa/"
             "zWsHl4JDAAFAAUBAAAAAPr6AAEAABUAKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
     static const int TEST_REQUEST_LEN = 1024;
-    const int TEST_TIME_OUT = 3000;
 
     byte test_request[TEST_REQUEST_LEN]{};
     io_context ic;
     byte *tls_request;
     uint16_t tls_request_len;
     io_context::work *iw = nullptr;
-    std::unordered_map<string, test_case> test_queue;
     thread th;
     st::task::queue<test_case> t_queue;
     void do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);

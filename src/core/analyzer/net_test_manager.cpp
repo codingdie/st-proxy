@@ -4,21 +4,24 @@
 
 #include "net_test_manager.h"
 #include "command/dns_command.h"
+#include "config.h"
 #include "nat_utils.h"
 #include <boost/asio/ssl.hpp>
 net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }),
-      t_queue("st-proxy-net-test", 4, 4, [this](const st::task::priority_task<test_case> &task) {
-          const test_case &tc = task.get_input();
-          this->do_test(tc.proxy, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
-              this->t_queue.complete(task);
-              if (valid) {
-                  quality_analyzer::uniq().record_first_package_success(tc.ip, tc.tunnel_id, cost);
-              } else {
-                  quality_analyzer::uniq().record_failed(tc.ip, tc.tunnel_id);
-              }
-          });
-      }) {
+      t_queue("st-proxy-net-test", st::proxy::config::uniq().net_test_config.max_qps,
+              st::proxy::config::uniq().net_test_config.max_running,
+              [this](const st::task::priority_task<test_case> &task) {
+                  const test_case &tc = task.get_input();
+                  this->do_test(tc.proxy, tc.ip, 443, [=](bool valid, bool connected, uint32_t cost) {
+                      this->t_queue.complete(task);
+                      if (valid) {
+                          quality_analyzer::uniq().record_first_package_success(tc.ip, tc.tunnel_id, cost);
+                      } else {
+                          quality_analyzer::uniq().record_failed(tc.ip, tc.tunnel_id);
+                      }
+                  });
+              }) {
     for (byte &i : test_request) {
         i = 0b00000000;
     }
@@ -46,7 +49,7 @@ void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uin
     connect_socks(socket, socks_ip, socks_port, test_endpoint, 1000, [=](bool success) {
         if (success) {
             auto *timer = new deadline_timer(ic);
-            timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
+            timer->expires_from_now(boost::posix_time::milliseconds(st::proxy::config::uniq().net_test_config.timeout));
             timer->async_wait([=](boost::system::error_code ec) {
                 if (ec != boost::asio::error::operation_aborted) {
                     socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
@@ -104,7 +107,7 @@ void net_test_manager::tls_handshake(uint32_t dist_ip, const std::function<void(
     auto *socket = new tcp::socket(ic);
     uint32_t begin = time::now();
     auto *timer = new deadline_timer(ic);
-    timer->expires_from_now(boost::posix_time::milliseconds(TEST_TIME_OUT));
+    timer->expires_from_now(boost::posix_time::milliseconds(st::proxy::config::uniq().net_test_config.timeout));
     timer->async_wait([=](boost::system::error_code ec) {
         socket->shutdown(boost::asio::socket_base::shutdown_both, ec);
         socket->cancel(ec);
@@ -175,8 +178,6 @@ void net_test_manager::do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t po
         } else {
             tls_handshake_with_socks(proxy.ip, proxy.port, st::utils::ipv4::ip_to_str(dist_ip), complete);
         }
-    } else if (port == 80) {
-        complete(false, false, 0);
     } else {
         complete(false, false, 0);
     }
@@ -192,6 +193,7 @@ void net_test_manager::reset_tls_session_id() {
     }
 }
 void net_test_manager::submit(const st::task::priority_task<test_case> &t) { t_queue.submit(t); }
+vector<task::priority_task<test_case>> net_test_manager::current_all_test() { return t_queue.all(); }
 
 string test_case::key() const {
     return tunnel_id + "->" + ipv4::ip_to_str(ip) + ":" + to_string(port) + "->" + to_string(tunnel_test_index);

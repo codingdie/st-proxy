@@ -3,15 +3,15 @@
 //
 
 #include "proxy_server.h"
+#include "console/proxy_console.h"
 #include "nat_utils.h"
 #include "session_manager.h"
 #include "virtual_port_manager.h"
 #include <boost/process.hpp>
 #include <boost/thread.hpp>
-#include "console/proxy_console.h"
 using namespace std;
 using namespace st::proxy;
-proxy_server::proxy_server() : state(0), manager(nullptr) {
+proxy_server::proxy_server() : state(0), manager(nullptr), schedule_timer(nullptr) {
     unsigned int cpu_count = std::thread::hardware_concurrency();
     auto worker_num = 2 + std::max(1U, cpu_count * 2);
     for (auto i = 0; i < worker_num; i++) {

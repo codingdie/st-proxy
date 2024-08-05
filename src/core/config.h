@@ -24,6 +24,17 @@ using namespace boost::asio;
 
 namespace st {
     namespace proxy {
+        class net_test_config {
+        public:
+            uint32_t max_qps = 20;
+            uint32_t max_running = 60;
+            uint32_t timeout = 3000;
+            void load(const boost::property_tree::ptree &tree) {
+                max_qps = tree.get("max_qps", 20);
+                max_running = tree.get("max_running", 60);
+                timeout = tree.get("timeout", 3000);
+            }
+        };
         class config {
         public:
             string ip = "127.0.0.1";
@@ -39,6 +50,7 @@ namespace st {
             set<uint32_t> ip_whitelist;
             set<string> proxy_target;
             st::areaip::area_ip_config area_ip_config;
+            st::proxy::net_test_config net_test_config;
             config() = default;
             static config &uniq();
             void load(const string &configPathInput);

@@ -3,6 +3,7 @@
 //
 
 #include "proxy_console.h"
+#include "analyzer/net_test_manager.h"
 #include "analyzer/quality_analyzer.h"
 #include "command/dns_command.h"
 #include "config.h"
@@ -74,6 +75,20 @@ void proxy_console::start() {
                 }
                 return make_pair(true, strutils::join(areas, ","));
             }
+        } else if (command == "proxy net test list") {
+            const auto &current_all_test = net_test_manager::uniq().current_all_test();
+            vector<string> lines(current_all_test.size());
+            std::transform(current_all_test.begin(), current_all_test.end(), lines.begin(),
+                           [](task::priority_task<test_case> task) {
+                               {
+                                   std::stringstream ss;
+                                   ss << task.id << '\t' << task.priority << '\t' << task.status << '\t'
+                                      << task.create_time << '\t' << task.in.key() << '\t' << task.pk;
+                                   return ss.str();
+                               }
+                           });
+
+            return make_pair(true, strutils::join(lines, "\n"));
         }
         return result;
     };
