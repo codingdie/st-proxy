@@ -216,7 +216,7 @@ void proxy_session::bind_local_port(basic_endpoint<tcp> &endpoint, boost::system
         proxy_sock.cancel(se);
         proxy_sock.close(se);
     }
-    proxy_sock.open(tcp::v4());
+    proxy_sock.open(tcp::v4(), error);
 #ifdef __APPLE__
     proxy_sock.bind(tcp::endpoint(endpoint.address(), session_manager::share().guess_unused_port()), error);
     int i = 1;
