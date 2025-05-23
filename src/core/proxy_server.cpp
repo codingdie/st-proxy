@@ -11,7 +11,7 @@
 #include <boost/thread.hpp>
 using namespace std;
 using namespace st::proxy;
-proxy_server::proxy_server() : state(0), manager(nullptr), schedule_timer(nullptr) {
+proxy_server::proxy_server() : state(0), schedule_timer(nullptr) {
     unsigned int cpu_count = std::thread::hardware_concurrency();
     auto worker_num = 2 + std::max(1U, cpu_count * 2);
     for (auto i = 0; i < worker_num; i++) {
@@ -70,9 +70,7 @@ void proxy_server::start() {
     }
     io_context *schedule_ic = worker_ctxs.at(0);
     schedule_timer = new deadline_timer(*schedule_ic);
-    manager = new session_manager(schedule_ic);
     schedule();
-
     for (auto i = 2; i < 2 + 2 * cpu_count; i++) {
         threads.emplace_back([=]() {
             auto ic = worker_ctxs.at(i);
@@ -89,11 +87,11 @@ void proxy_server::start() {
     for (auto &th : threads) {
         th.join();
     }
-    delete manager;
     logger::INFO << "st-proxy server stopped" << END;
 }
 void proxy_server::shutdown() {
     this->state = 2;
+    schedule_timer->cancel();
     for (boost::asio::io_context *ioContext : worker_ctxs) {
         ioContext->stop();
     }
@@ -120,7 +118,7 @@ void proxy_server::accept(io_context *context, tcp::acceptor *acceptor) {
             return;
         }
         if (!error) {
-            manager->add(session);
+            session_manager::uniq().add(session);
         } else {
             delete session;
         }

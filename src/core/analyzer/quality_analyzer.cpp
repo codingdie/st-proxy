@@ -161,7 +161,7 @@ quality_analyzer::~quality_analyzer() {
 };
 quality_analyzer::quality_analyzer()
     : db("st-proxy-quality", 4 * 1024 * 1204), ic(), worker(new boost::asio::io_context::work(ic)),
-      th(new thread([this]() { ic.run(); })) {
+      th(new thread([this]() { ic.run(); })), random_engine(time::now()) {
     uint32_t ip_count = 0;
     uint32_t record_count = 0;
     db.list([&](const std::string &key, const std::string &value) {
@@ -252,6 +252,7 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, uint16_
         }
         result.emplace_back(tunnel, make_pair(score, ip_tunnel_record));
     }
+    std::shuffle(result.begin(), result.end(), random_engine);
     apm_logger::perf("st-proxy-select-tunnels-cal-score", {}, time::now() - begin);
     sort(result.begin(), result.end(),
          [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,

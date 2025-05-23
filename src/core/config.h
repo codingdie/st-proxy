@@ -52,6 +52,7 @@ namespace st {
             st::areaip::area_ip_config area_ip_config;
             st::proxy::net_test_config net_test_config;
             config() = default;
+            virtual ~config();
             static config &uniq();
             void load(const string &configPathInput);
             vector<uint32_t> resolve_domain(const string &domain) const;

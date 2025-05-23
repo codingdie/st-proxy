@@ -8,6 +8,7 @@
 #include "command/dns_command.h"
 #include "config.h"
 #include "virtual_port_manager.h"
+#include "session_manager.h"
 void proxy_console::start() {
     console =
             new st::console::udp_console(st::proxy::config::uniq().console_ip, st::proxy::config::uniq().console_port);
@@ -89,6 +90,8 @@ void proxy_console::start() {
                            });
 
             return make_pair(true, strutils::join(lines, "\n"));
+        } else if (command == "proxy session list") {
+            return make_pair(true, strutils::join(session_manager::uniq().status(), "\n"));
         }
         return result;
     };

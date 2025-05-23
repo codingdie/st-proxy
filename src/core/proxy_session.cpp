@@ -399,6 +399,15 @@ string proxy_session::transmit_log() const {
     return "live:" + to_string(val) + ", read:" + to_string(this->read_counter.total()) +
            ", write:" + to_string(this->write_counter.total());
 }
+
+
+string proxy_session::status() {
+    return to_string(this->begin) + "\t" + to_string(time::now() - this->begin) + "\t" +
+           to_string(this->read_counter.total()) + "\t" + to_string(this->write_counter.total()) + "\t" + prefer_area +
+           "\t" + asio::addr_str(client_end) + "\t" + asio::addr_str(dist_end) + "\t" + to_string(this->v_port) + "\t" +
+           st::utils::strutils::join(dist_hosts, ",") + "\t" +
+           (connected_tunnel != nullptr ? connected_tunnel->id() : "");
+}
 bool proxy_session::nextStage(proxy_session::STAGE nextStage) {
     stageLock.lock();
     bool result = false;

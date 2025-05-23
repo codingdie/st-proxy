@@ -31,7 +31,6 @@ private:
     thread_pool pool;
     ip::tcp::acceptor *default_acceptor;
     vector<io_context::work *> workers;
-    session_manager *manager;
     boost::asio::deadline_timer *schedule_timer;
     void accept(io_context *context, tcp::acceptor *acceptor);
 

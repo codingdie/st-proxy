@@ -50,6 +50,8 @@ private:
     io_context ic;
     io_context::work *worker;
     std::thread *th;
+    std::default_random_engine random_engine;
+
     static string build_key(uint32_t dist_ip, const string &tunnel);
     static string build_key(uint32_t dist_ip);
     void add_session_record(const string &key, st::proxy::proto::quality_record &record,

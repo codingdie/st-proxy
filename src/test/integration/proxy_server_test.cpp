@@ -32,11 +32,15 @@ protected:
 
 TEST_F(IntegrationTests, testCURL) {
     nat_utils::uniq().add_test_domain("www.google.com");
+
     string result;
-    st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
-                           result);
-    std::this_thread::sleep_for(std::chrono::milliseconds(20 * 1000));
-    st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
-                           result);
+    int i = 0;
+    while (i++ < 20 && result.empty()) {
+        st::utils::shell::exec("curl -s --location --connect-timeout 70 -m 70  --request GET https://www.google.com",
+                               result);
+        if (result.empty()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(2 * 1000));
+        }
+    }
     ASSERT_TRUE(result.length() > 0);
 }

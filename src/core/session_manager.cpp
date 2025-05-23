@@ -5,13 +5,9 @@
 #include "session_manager.h"
 #include <mutex>
 
-void session_manager::add(proxy_session *session) {
-    session->start();
-    ic->post([=]() { connections.emplace(make_pair(session->id, session)); });
-}
-
-session_manager::session_manager(io_context *ic)
-    : random_engine(time::now()), random_range(1024, 12000), session_timer(*ic), ic(ic) {
+session_manager::session_manager() : ctx(), random_engine(time::now()), random_range(1024, 12000), session_timer(ctx) {
+    worker = new boost::asio::io_context::work(ctx);
+    th = new thread([this]() { this->ctx.run(); });
     schedule_monitor();
 }
 
@@ -27,6 +23,17 @@ bool session_manager::destroy(uint64_t sid) {
     return false;
 }
 
+
+session_manager &session_manager::uniq() {
+    static session_manager instance;
+    return instance;
+}
+
+void session_manager::add(proxy_session *session) {
+    session->start();
+    ctx.post([=]() { connections.emplace(session->id, session); });
+}
+
 uint16_t session_manager::guess_unused_port() { return random_range(random_engine); }
 
 void session_manager::schedule_monitor() {
@@ -37,7 +44,13 @@ void session_manager::schedule_monitor() {
     });
 }
 
-session_manager::~session_manager() { session_timer.cancel(); }
+session_manager::~session_manager() {
+    session_timer.cancel();
+    ctx.stop();
+    delete worker;
+    th->join();
+    delete th;
+}
 
 void session_manager::monitor_session() {
     set<uint64_t> closed_session_ids;
@@ -74,4 +87,24 @@ void session_manager::monitor_session() {
                  << END;
 
     apm_logger::perf("st-proxy-session", {{}}, {{"total", connections.size()}, {"destroy", closed_session_ids.size()}});
+}
+vector<string> session_manager::status() {
+    vector<string> results;
+    bool success = false;
+    ctx.post([&results, &success, this]() {
+        for (const auto &item : connections) {
+            proxy_session *session = item.second;
+            results.emplace_back(session->status());
+        }
+        success = true;
+    });
+    int i = 0;
+    while (i++ < 10) {
+        if (success) {
+            break;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        }
+    }
+    return results;
 }

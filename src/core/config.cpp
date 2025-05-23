@@ -152,3 +152,6 @@ void config::parse_whitelist_to_ips() {
         tunnel->ip_whitelist = parse_whitelist_to_ips(tunnel->whitelist);
     }
 }
+config::~config() {
+    st::utils::logger::disable();
+}

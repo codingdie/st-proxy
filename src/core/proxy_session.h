@@ -29,6 +29,8 @@ public:
 
     string transmit_log() const;
 
+    string status();
+
     void shutdown();
 
     void try_connect();
