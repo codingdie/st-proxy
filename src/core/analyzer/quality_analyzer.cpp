@@ -266,7 +266,7 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, uint16_
                      return su_a > su_b;
                  } else {
                      auto f_a = record_a.first_package_failed();
-                     auto f_b = record_a.first_package_failed();
+                     auto f_b = record_b.first_package_failed();
                      if (f_a != f_b) {
                          return f_b > f_a;
                      } else {
@@ -298,7 +298,7 @@ void quality_analyzer::try_analyze(uint32_t dist_ip, uint16_t port, const select
             if (item.second.first == max_score) {
                 vector<uint16_t> result;
                 stream_tunnel *tunnel = item.first;
-                for (auto i = record.first_package_failed() + record.first_package_success(); i < 1; i++) {
+                for (auto i = record.first_package_failed() + record.first_package_success(); i < record.queue_limit(); i++) {
                     test_case tc;
                     tc.ip = dist_ip;
                     tc.port = port;

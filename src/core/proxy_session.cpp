@@ -65,7 +65,7 @@ void proxy_session::start() {
 }
 
 void proxy_session::connect_tunnels(const std::function<void(bool)> &complete_handler) {
-    if (try_connect_index < 1 && this->stage == CONNECTING) {
+    if (try_connect_index < selected_tunnels.size() && this->stage == CONNECTING) {
         stream_tunnel *tunnel = selected_tunnels[try_connect_index];
         auto complete = [=](bool success) {
             if (success) {

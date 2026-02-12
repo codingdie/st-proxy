@@ -17,7 +17,10 @@ bool session_manager::destroy(uint64_t sid) {
     if (iterator != connections.end()) {
         proxy_session *session = iterator->second;
         connections.erase(iterator);
-        delete session;
+        // 延迟删除：在 session 的 io_context 中删除，确保所有异步回调完成
+        session->ic.post([session]() {
+            delete session;
+        });
         return true;
     }
     return false;
@@ -30,8 +33,10 @@ session_manager &session_manager::uniq() {
 }
 
 void session_manager::add(proxy_session *session) {
-    session->start();
-    ctx.post([=]() { connections.emplace(session->id, session); });
+    ctx.post([=]() {
+        connections.emplace(session->id, session);
+        session->start();
+    });
 }
 
 uint16_t session_manager::guess_unused_port() { return random_range(random_engine); }
