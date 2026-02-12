@@ -45,6 +45,8 @@ public:
 
     void clear();
 
+    static int64_t get_min_expire_minutes(const st::proxy::proto::quality_record &record);
+
 private:
     st::kv::disk_kv db;
     io_context ic;

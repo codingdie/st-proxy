@@ -105,6 +105,7 @@ string proxy_console::analyse_ip_tunnels(uint32_t ip) {
     for (auto &it : tunnels) {
         auto tunnel = it.first;
         const auto &tunnel_record = it.second.second;
+        int64_t expire_minutes = quality_analyzer::get_min_expire_minutes(tunnel_record);
         str.append(to_string(i++))
                 .append("\t")
                 .append(tunnel->id())
@@ -118,6 +119,8 @@ string proxy_console::analyse_ip_tunnels(uint32_t ip) {
                 .append(to_string(tunnel_record.first_package_failed()))
                 .append("\t")
                 .append(to_string(tunnel_record.first_package_cost()))
+                .append("\t")
+                .append(expire_minutes >= 0 ? to_string(expire_minutes) : "-")
                 .append("\n");
     }
     strutils::trim(str);
@@ -135,6 +138,7 @@ string proxy_console::analyse_tunnel() {
                 failed_ips.emplace_back(ipv4::ip_to_str(item.ip()));
             }
         }
+        int64_t expire_minutes = quality_analyzer::get_min_expire_minutes(record);
         str.append(tunnel->id())
                 .append("\t")
                 .append(tunnel->area)
@@ -146,6 +150,8 @@ string proxy_console::analyse_tunnel() {
                 .append(to_string(record.first_package_cost()))
                 .append("\t")
                 .append(join(failed_ips, ","))
+                .append("\t")
+                .append(expire_minutes >= 0 ? to_string(expire_minutes) : "-")
                 .append("\n");
     }
     strutils::trim(str);
@@ -154,6 +160,7 @@ string proxy_console::analyse_tunnel() {
 string proxy_console::analyse_ip(uint32_t ip) {
     string str;
     auto ip_record = quality_analyzer::uniq().get_ip_record(ip);
+    int64_t expire_minutes = quality_analyzer::get_min_expire_minutes(ip_record);
     str.append(utils::ipv4::ip_to_str(ip))
             .append("\t")
             .append(to_string(ip_record.first_package_success()))
@@ -161,6 +168,8 @@ string proxy_console::analyse_ip(uint32_t ip) {
             .append(to_string(ip_record.first_package_failed()))
             .append("\t")
             .append(to_string(ip_record.first_package_cost()))
+            .append("\t")
+            .append(expire_minutes >= 0 ? to_string(expire_minutes) : "-")
             .append("\n");
     strutils::trim(str);
     return str;

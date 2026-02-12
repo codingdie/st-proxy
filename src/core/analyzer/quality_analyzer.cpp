@@ -152,6 +152,38 @@ void quality_analyzer::process_record(quality_record &record) {
     record.set_first_package_failed(failed);
 }
 
+int64_t quality_analyzer::get_min_expire_minutes(const st::proxy::proto::quality_record &record) {
+    if (record.records_size() == 0) {
+        return -1;
+    }
+
+    uint32_t record_expire_time = 1000L * 60 * 60;  // 1小时，单位毫秒
+    if (record.type() != st::proxy::proto::IP_TUNNEL) {
+        record_expire_time = 1000L * 60 * 60 * 12;  // 12小时，单位毫秒
+    }
+
+    int64_t min_remaining_ms = -1;
+    uint64_t now = time::now();
+
+    for (int i = 0; i < record.records_size() && i < record.queue_limit(); i++) {
+        const session_record &s_record = record.records(i);
+        uint64_t elapsed_ms = now - s_record.timestamp();
+
+        if (elapsed_ms < record_expire_time) {
+            int64_t remaining_ms = record_expire_time - elapsed_ms;
+            if (min_remaining_ms < 0 || remaining_ms < min_remaining_ms) {
+                min_remaining_ms = remaining_ms;
+            }
+        }
+    }
+
+    if (min_remaining_ms < 0) {
+        return -1;
+    }
+
+    // 转换为分钟
+    return min_remaining_ms / (1000 * 60);
+}
 
 quality_analyzer::~quality_analyzer() {
     // 先删除 work 对象，让 io_context 自然退出（等待所有 handler 完成）
