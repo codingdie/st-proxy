@@ -33,7 +33,7 @@ void quality_analyzer::record_failed(uint32_t dist_ip, const string &tunnel_id) 
             add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se);
         }
         if (check_all_failed(ip_record)) {
-            proxy::shm::uniq().forbid_ip(dist_ip);
+            add_to_blacklist(dist_ip);
             delete_record(dist_ip);
         }
     });
@@ -61,7 +61,7 @@ void quality_analyzer::record_first_package_success(uint32_t dist_ip, const stri
         add_session_record(quality_analyzer::build_key(dist_ip), ip_record, se);
         add_session_record(quality_analyzer::build_key(dist_ip, tunnel_id), ip_tunnel_record, se);
         if (!check_all_failed(ip_record)) {
-            proxy::shm::uniq().recover_ip(dist_ip);
+            remove_from_blacklist(dist_ip);
         }
     });
 }
@@ -193,7 +193,7 @@ quality_analyzer::~quality_analyzer() {
     delete th;
 };
 quality_analyzer::quality_analyzer()
-    : db("st-proxy-quality", 4 * 1024 * 1204), ic(), worker(new boost::asio::io_context::work(ic)),
+    : db("st-proxy-quality", 4 * 1024 * 1204), blacklist_db("st-proxy-blacklist", 100 * 1024), ic(), worker(new boost::asio::io_context::work(ic)),
       th(new thread([this]() { ic.run(); })), random_engine(time::now()) {
     uint32_t ip_count = 0;
     uint32_t record_count = 0;
@@ -207,9 +207,9 @@ quality_analyzer::quality_analyzer()
         if (record.type() == IP) {
             ip_count++;
             if (quality_analyzer::check_all_failed(record)) {
-                proxy::shm::uniq().forbid_ip(ipv4::str_to_ip(key));
+                add_to_blacklist(ipv4::str_to_ip(key));
             } else {
-                proxy::shm::uniq().recover_ip(ipv4::str_to_ip(key));
+                remove_from_blacklist(ipv4::str_to_ip(key));
             }
         }
         return record;
@@ -350,4 +350,36 @@ void quality_analyzer::try_analyze(uint32_t dist_ip, uint16_t port, const select
             }
         }
     }
+}
+
+// 黑名单相关实现
+void quality_analyzer::add_to_blacklist(uint32_t ip) {
+    execute([=]() {
+        string key = st::utils::ipv4::ip_to_str(ip);
+        string value = std::to_string(st::utils::time::now());
+        blacklist_db.put(key, value, IP_BLACKLIST_EXPIRE_MINUTES);
+        logger::WARN << "IP" << st::utils::ipv4::ip_to_str(ip) << "added to blacklist for" << IP_BLACKLIST_EXPIRE_MINUTES << "minutes" << END;
+    });
+}
+
+bool quality_analyzer::is_in_blacklist(uint32_t ip) {
+    string key = st::utils::ipv4::ip_to_str(ip);
+    string value = blacklist_db.get(key);
+    return !value.empty();
+}
+
+void quality_analyzer::remove_from_blacklist(uint32_t ip) {
+    execute([=]() {
+        string key = st::utils::ipv4::ip_to_str(ip);
+        blacklist_db.erase(key);
+        logger::INFO << "IP" << st::utils::ipv4::ip_to_str(ip) << "removed from blacklist" << END;
+    });
+}
+
+std::vector<uint32_t> quality_analyzer::get_blacklist_ips() {
+    std::vector<uint32_t> result;
+    blacklist_db.list([&result](const std::string &key, const std::string &value) {
+        result.push_back(st::utils::ipv4::str_to_ip(key));
+    });
+    return result;
 }

@@ -48,11 +48,11 @@ void proxy_console::start() {
 
         } else if (command == "proxy blacklist") {
             string str;
-            //            vector<std::string> ips = st::proxy::shm::uniq().forbid_ip_list();
-            //            for (const auto &blackIp : ips) {
-            //                auto domains = st::dns::shm::share().reverse_resolve_all(ipv4::str_to_ip(blackIp));
-            //                str.append(blackIp).append("\t").append(join(domains, ",")).append("\n");
-            //            }
+            vector<uint32_t> ips = quality_analyzer::uniq().get_blacklist_ips();
+            for (const auto &blackIp : ips) {
+                auto domains = st::command::dns::reverse_resolve(blackIp);
+                str.append(ipv4::ip_to_str(blackIp)).append("\t").append(strutils::join(domains, ",")).append("\n");
+            }
             strutils::trim(str);
             return make_pair(true, str);
         } else if (command == "proxy register area virtual port") {

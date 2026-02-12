@@ -55,6 +55,13 @@ void proxy_session::start() {
         logger::WARN << "ip" << st::utils::ipv4::ip_to_str(this->dist_end.address().to_v4().to_uint())
                      << "area not recognized" << END;
     }
+    // 检查黑名单
+    uint32_t dist_ip = this->dist_end.address().to_v4().to_uint();
+    if (quality_analyzer::uniq().is_in_blacklist(dist_ip)) {
+        logger::WARN << id_str() << "IP" << st::utils::ipv4::ip_to_str(dist_ip) << "is in blacklist, reject connection" << END;
+        shutdown();
+        return;
+    }
     select_tunnels();
     if (selected_tunnels.empty()) {
         logger::ERROR << id_str() << "cal tunnels empty!" << END;

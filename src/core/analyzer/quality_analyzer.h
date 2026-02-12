@@ -15,6 +15,7 @@ class quality_analyzer {
 public:
     static const uint32_t IP_TUNNEL_TEST_COUNT = 3;
     static const uint32_t TUNNEL_TEST_COUNT = 20;
+    static const uint32_t IP_BLACKLIST_EXPIRE_MINUTES = 60; // 黑名单过期时间：1小时
 
     quality_analyzer();
 
@@ -45,10 +46,17 @@ public:
 
     void clear();
 
+    // 黑名单相关方法
+    void add_to_blacklist(uint32_t ip);
+    bool is_in_blacklist(uint32_t ip);
+    void remove_from_blacklist(uint32_t ip);
+    std::vector<uint32_t> get_blacklist_ips();
+
     static int64_t get_min_expire_minutes(const st::proxy::proto::quality_record &record);
 
 private:
     st::kv::disk_kv db;
+    st::kv::disk_kv blacklist_db; // 黑名单专用数据库
     io_context ic;
     io_context::work *worker;
     std::thread *th;
