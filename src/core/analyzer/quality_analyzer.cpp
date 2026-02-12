@@ -154,8 +154,9 @@ void quality_analyzer::process_record(quality_record &record) {
 
 
 quality_analyzer::~quality_analyzer() {
-    ic.stop();
+    // 先删除 work 对象，让 io_context 自然退出（等待所有 handler 完成）
     delete worker;
+    // 等待线程自然结束
     th->join();
     delete th;
 };
