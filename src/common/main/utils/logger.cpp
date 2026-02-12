@@ -8,21 +8,22 @@
 #include "string_utils.h"
 
 #include "pool.h"
-#include <boost/date_time/posix_time/posix_time_types.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/expressions/keyword.hpp>
-#include <boost/log/sinks.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <boost/log/trivial.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/utility/setup/file.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <iostream>
 #include <random>
 #include <regex>
 #include <thread>
 #include <utility>
+#include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/sinks.hpp>
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/expressions/keyword.hpp>
+#include <boost/date_time/posix_time/posix_time_types.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/support/date_time.hpp>
 
 using namespace std;
 using namespace st::utils;
@@ -88,11 +89,9 @@ void logger::do_log() {
 }
 void logger::do_log(string line) const {
     if (INITED) {
-        BOOST_LOG(normal_file_logger::get())
-                << "[" << levelName << "]" << SPLIT << "[" << traceId << "]" << SPLIT << line;
+        BOOST_LOG(normal_file_logger::get()) << "[" << levelName << "]" << SPLIT << "[" << traceId << "]" << SPLIT << line;
     } else {
-        cout << time::now_str() << SPLIT << "[" << levelName << "]" << SPLIT << std::this_thread::get_id() << SPLIT
-             << "[" << traceId << "]" << SPLIT << line << endl;
+        cout << time::now_str() << SPLIT << "[" << levelName << "]" << SPLIT << std::this_thread::get_id() << SPLIT << "[" << traceId << "]" << SPLIT << line << endl;
     }
 }
 
@@ -114,7 +113,8 @@ logger &logger::operator<<(char ch) {
 }
 
 
-logger::logger(string levelName, uint32_t level) : levelName(std::move(levelName)), level(level) {}
+logger::logger(string levelName, uint32_t level) : levelName(std::move(levelName)), level(level) {
+}
 
 logger &logger::operator<<(const string &string) {
     append_str(string);
@@ -137,8 +137,7 @@ logger &logger::operator<<(const unordered_set<string> &strs) {
 }
 
 thread_local uint64_t logger::traceId = 0;
-unordered_map<string, unordered_map<string, unordered_map<string, unordered_map<string, uint64_t>>>>
-        apm_logger::STATISTICS;
+unordered_map<string, unordered_map<string, unordered_map<string, unordered_map<string, uint64_t>>>> apm_logger::STATISTICS;
 boost::asio::io_context apm_logger::IO_CONTEXT;
 boost::asio::io_context::work *apm_logger::IO_CONTEXT_WORK = nullptr;
 boost::asio::deadline_timer apm_logger::LOG_TIMER(apm_logger::IO_CONTEXT);
@@ -247,7 +246,6 @@ void apm_logger::init() {
 }
 void apm_logger::disable() {
     if (IO_CONTEXT_WORK != nullptr) {
-        LOG_TIMER.cancel();
         IO_CONTEXT.stop();
         delete IO_CONTEXT_WORK;
         IO_CONTEXT_WORK = nullptr;
@@ -256,14 +254,13 @@ void apm_logger::disable() {
             delete th;
         }
     }
+    report_apm_log_local();
 }
 
 void apm_logger::schedule_log() {
     LOG_TIMER.expires_from_now(boost::posix_time::milliseconds(60 * 1000));
     LOG_TIMER.async_wait([=](boost::system::error_code ec) {
-        if (!ec) {
-            schedule_log();
-        }
+        schedule_log();
         report_apm_log_local();
     });
 }
@@ -336,17 +333,21 @@ void logger::init(boost::property_tree::ptree &tree) {
     core->remove_all_sinks();
     core->reset_filter();
     typedef sinks::asynchronous_sink<sinks::text_file_backend> sink_t;
-    boost::shared_ptr<sinks::text_file_backend> backend = boost::make_shared<sinks::text_file_backend>(
-            keywords::file_name = "/tmp/st/" + logger::TAG + ".log",
-            keywords::target_file_name = logger::TAG + ".log.%Y%m%d%H-%N", keywords::rotation_size = 4 * 1024 * 1024);
+    boost::shared_ptr<sinks::text_file_backend> backend =
+            boost::make_shared<sinks::text_file_backend>(
+                    keywords::file_name = "/tmp/st/" + logger::TAG + ".log",
+                    keywords::target_file_name = logger::TAG + ".log.%Y%m%d%H-%N",
+                    keywords::rotation_size = 4 * 1024 * 1024);
     boost::shared_ptr<sink_t> sink(new sink_t(backend));
     sink->locked_backend()->set_file_collector(sinks::file::make_collector(
-            keywords::target = "/tmp/st", keywords::max_size = 16 * 1024 * 1024, keywords::max_files = 4));
+            keywords::target = "/tmp/st",
+            keywords::max_size = 16 * 1024 * 1024,
+            keywords::max_files = 4));
     sink->locked_backend()->scan_for_files();
     sink->locked_backend()->enable_final_rotation(false);
-    sink->set_formatter(
-            expr::stream << expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S.%f") << " "
-                         << expr::smessage);
+    sink->set_formatter(expr::stream
+                        << expr::format_date_time<boost::posix_time::ptime>("TimeStamp", "%Y-%m-%d %H:%M:%S.%f")
+                        << " " << expr::smessage);
     core->add_sink(sink);
     logging::add_common_attributes();
     logger::INITED = true;
