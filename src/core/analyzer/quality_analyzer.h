@@ -5,7 +5,7 @@
 #ifndef ST_PROXY_QUALITY_ANALYZER_H
 #define ST_PROXY_QUALITY_ANALYZER_H
 
-#include "proto/message.pb.h"
+#include "message.pb.h"
 #include "st.h"
 #include "stream_tunnel.h"
 #include <boost/asio.hpp>
