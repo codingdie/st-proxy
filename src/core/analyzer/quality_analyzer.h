@@ -15,7 +15,7 @@ class quality_analyzer {
 public:
     static const uint32_t IP_TUNNEL_TEST_COUNT = 3;
     static const uint32_t TUNNEL_TEST_COUNT = 20;
-    static const uint32_t IP_BLACKLIST_EXPIRE_MINUTES = 60; // 黑名单过期时间：1小时
+    static constexpr uint32_t IP_BLACKLIST_EXPIRE_MINUTES = 60;
 
     quality_analyzer();
 
@@ -60,7 +60,6 @@ private:
     io_context ic;
     io_context::work *worker;
     std::thread *th;
-    std::default_random_engine random_engine;
 
     static string build_key(uint32_t dist_ip, const string &tunnel);
     static string build_key(uint32_t dist_ip);

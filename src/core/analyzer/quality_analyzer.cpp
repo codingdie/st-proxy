@@ -9,6 +9,7 @@
 #include "net_test_manager.h"
 #include "utils/shm/proxy_shm.h"
 using namespace st::proxy::proto;
+constexpr uint32_t quality_analyzer::IP_BLACKLIST_EXPIRE_MINUTES;
 quality_analyzer &quality_analyzer::uniq() {
     static quality_analyzer instance;
     return instance;
@@ -194,7 +195,7 @@ quality_analyzer::~quality_analyzer() {
 };
 quality_analyzer::quality_analyzer()
     : db("st-proxy-quality", 4 * 1024 * 1204), blacklist_db("st-proxy-blacklist", 100 * 1024), ic(), worker(new boost::asio::io_context::work(ic)),
-      th(new thread([this]() { ic.run(); })), random_engine(time::now()) {
+      th(new thread([this]() { ic.run(); })) {
     uint32_t ip_count = 0;
     uint32_t record_count = 0;
     db.list([&](const std::string &key, const std::string &value) {
@@ -285,7 +286,10 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, uint16_
         }
         result.emplace_back(tunnel, make_pair(score, ip_tunnel_record));
     }
-    std::shuffle(result.begin(), result.end(), random_engine);
+    // Called from session_manager's single-threaded io_context (via ctx.post in session_manager::add).
+    // thread_local ensures the engine is never shared across threads, even if call sites change.
+    thread_local std::default_random_engine tl_random_engine(time::now());
+    std::shuffle(result.begin(), result.end(), tl_random_engine);
     apm_logger::perf("st-proxy-select-tunnels-cal-score", {}, time::now() - begin);
     sort(result.begin(), result.end(),
          [=](const pair<stream_tunnel *, pair<int, proxy::proto::quality_record>> &a,
