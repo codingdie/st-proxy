@@ -3,6 +3,7 @@
 //
 
 #include "proxy_server.h"
+#include "analyzer/net_test_manager.h"
 #include "console/proxy_console.h"
 #include "nat_utils.h"
 #include "session_manager.h"
@@ -79,6 +80,7 @@ void proxy_server::start() {
         });
     }
 
+    net_test_manager::uniq().start_tunnel_health_check();
     logger::INFO << "st-proxy start with" << worker_ctxs.size() - 2 << "worker, listen at"
                  << st::proxy::config::uniq().ip + ":" + to_string(st::proxy::config::uniq().port) << END;
     this->state = 1;
