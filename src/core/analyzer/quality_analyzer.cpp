@@ -284,6 +284,10 @@ select_tunnels_tesult quality_analyzer::select_tunnels(uint32_t dist_ip, uint16_
         if (tunnel->in_whitelist(dist_ip) || tunnel->in_whitelist(dist_hosts) || tunnel->area == prefer_area) {
             score += 10000;
         }
+        // 主动健康检查标记 DOWN 的隧道大幅降权（不剔除，作为兜底）
+        if (tunnel->is_down()) {
+            score -= 100000;
+        }
         result.emplace_back(tunnel, make_pair(score, ip_tunnel_record));
     }
     // Called from session_manager's single-threaded io_context (via ctx.post in session_manager::add).
