@@ -315,11 +315,11 @@ void apm_logger::report_apm_log_local() {
 apm_logger::~apm_logger() {}
 
 void logger::disable() {
-    apm_logger::disable();
     boost::shared_ptr<logging::core> core = logging::core::get();
     core->flush();
     core->remove_all_sinks();
     core->reset_filter();
+    apm_logger::disable();
 }
 
 void logger::init(boost::property_tree::ptree &tree) {

@@ -15,7 +15,7 @@ class quality_analyzer {
 public:
     static const uint32_t IP_TUNNEL_TEST_COUNT = 3;
     static const uint32_t TUNNEL_TEST_COUNT = 20;
-    static constexpr uint32_t IP_BLACKLIST_EXPIRE_MINUTES = 60;
+    static constexpr uint32_t IP_BLACKLIST_EXPIRE_MINUTES = 10;
 
     quality_analyzer();
 
