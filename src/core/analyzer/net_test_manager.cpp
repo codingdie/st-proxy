@@ -29,10 +29,16 @@ net_test_manager::net_test_manager()
     tls_request_len = st::utils::base64::decode(TLS_REQUEST_BASE64, tls_request);
 }
 net_test_manager::~net_test_manager() {
+    if (health_check_timer != nullptr) {
+        boost::system::error_code ec;
+        health_check_timer->cancel(ec);
+    }
     ic.stop();
     delete iw;
     th.join();
     delete tls_request;
+    delete health_check_timer;
+    health_check_timer = nullptr;
 }
 net_test_manager &net_test_manager::uniq() {
     static net_test_manager instance;
@@ -197,4 +203,110 @@ vector<task::priority_task<test_case>> net_test_manager::current_all_test() { re
 
 string test_case::key() const {
     return tunnel_id + "->" + ipv4::ip_to_str(ip) + ":" + to_string(port) + "->" + to_string(tunnel_test_index);
+}
+
+std::pair<std::string, uint16_t> net_test_manager::parse_check_url(const std::string &url) {
+    std::string s = url;
+    uint16_t port = 443;
+    if (s.find("https://") == 0) {
+        s = s.substr(8);
+        port = 443;
+    } else if (s.find("http://") == 0) {
+        s = s.substr(7);
+        port = 80;
+    }
+    auto slash = s.find('/');
+    if (slash != std::string::npos) {
+        s = s.substr(0, slash);
+    }
+    auto colon = s.find(':');
+    if (colon != std::string::npos) {
+        port = static_cast<uint16_t>(std::stoi(s.substr(colon + 1)));
+        s = s.substr(0, colon);
+    }
+    return std::make_pair(s, port);
+}
+
+void net_test_manager::check_tunnel_health(stream_tunnel *tunnel,
+                                           const std::function<void(bool, uint32_t)> &callback) {
+    auto host_port = parse_check_url(tunnel->http_check_url);
+    const std::string &host = host_port.first;
+    uint16_t port = host_port.second;
+
+    if (port != 443) {
+        logger::WARN << "tunnel" << tunnel->id() << "http_check_url port != 443, skip" << END;
+        callback(false, 0);
+        return;
+    }
+
+    auto ips = st::utils::dns::query(st::proxy::config::uniq().dns, host);
+    if (ips.empty()) {
+        ips = st::utils::dns::query(host);
+    }
+    if (ips.empty()) {
+        logger::WARN << "tunnel" << tunnel->id() << "resolve" << host << "failed" << END;
+        callback(false, 0);
+        return;
+    }
+    uint32_t target_ip = ips[0];
+
+    auto net_callback = [=](bool valid, bool /*connected*/, uint32_t cost) {
+        callback(valid, cost);
+    };
+
+    if (tunnel->type == "DIRECT") {
+        tls_handshake(target_ip, net_callback);
+    } else {
+        tls_handshake_with_socks(tunnel->ip, tunnel->port,
+                                 st::utils::ipv4::ip_to_str(target_ip), net_callback);
+    }
+}
+
+void net_test_manager::run_health_check_round() {
+    auto &tunnels = st::proxy::config::uniq().tunnels;
+    for (auto *tunnel : tunnels) {
+        check_tunnel_health(tunnel, [tunnel](bool valid, uint32_t cost) {
+            tunnel->last_check_time.store(time::now());
+            tunnel->last_check_cost.store(cost);
+            if (valid) {
+                tunnel->consecutive_failures.store(0);
+                if (tunnel->health_status.load() != HEALTH_UP) {
+                    logger::INFO << "tunnel" << tunnel->id() << "health UP cost" << cost << END;
+                }
+                tunnel->health_status.store(HEALTH_UP);
+            } else {
+                uint32_t failures = tunnel->consecutive_failures.fetch_add(1) + 1;
+                if (failures >= TUNNEL_HEALTH_DOWN_THRESHOLD) {
+                    if (tunnel->health_status.load() != HEALTH_DOWN) {
+                        logger::WARN << "tunnel" << tunnel->id() << "health DOWN after"
+                                     << failures << "consecutive failures" << END;
+                    }
+                    tunnel->health_status.store(HEALTH_DOWN);
+                }
+            }
+        });
+    }
+}
+
+void net_test_manager::schedule_health_check() {
+    health_check_timer->expires_from_now(
+            boost::posix_time::milliseconds(static_cast<long>(TUNNEL_HEALTH_CHECK_INTERVAL_MS)));
+    health_check_timer->async_wait([this](boost::system::error_code ec) {
+        if (ec == boost::asio::error::operation_aborted) {
+            return;
+        }
+        run_health_check_round();
+        schedule_health_check();
+    });
+}
+
+void net_test_manager::start_tunnel_health_check() {
+    if (health_check_timer != nullptr) {
+        return;
+    }
+    health_check_timer = new boost::asio::deadline_timer(ic);
+    ic.post([this]() {
+        run_health_check_round();
+        schedule_health_check();
+    });
 }

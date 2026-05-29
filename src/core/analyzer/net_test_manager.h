@@ -39,6 +39,13 @@ public:
                                   const net_test_callback &callback);
     vector<task::priority_task<test_case>> current_all_test();
 
+    // 启动隧道健康检查定时器（30 秒一轮）
+    void start_tunnel_health_check();
+
+    // 对单个隧道做一次健康检查
+    void check_tunnel_health(stream_tunnel *tunnel,
+                             const std::function<void(bool, uint32_t)> &callback);
+
 private:
     const string TLS_REQUEST_BASE64 =
             "FgMBAgABAAH8AwP3ahaW4vzdplXY2naKY77SC+CkSDclrkS+"
@@ -62,6 +69,14 @@ private:
     st::task::queue<test_case> t_queue;
     void do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
     void reset_tls_session_id();
+
+    static constexpr uint32_t TUNNEL_HEALTH_CHECK_INTERVAL_MS = 30000;
+    static constexpr uint32_t TUNNEL_HEALTH_CHECK_TIMEOUT_MS = 5000;
+    static constexpr uint32_t TUNNEL_HEALTH_DOWN_THRESHOLD = 2;
+    boost::asio::deadline_timer *health_check_timer = nullptr;
+    void schedule_health_check();
+    void run_health_check_round();
+    static std::pair<std::string, uint16_t> parse_check_url(const std::string &url);
 };
 
 
