@@ -92,6 +92,30 @@ void proxy_console::start() {
             return make_pair(true, strutils::join(lines, "\n"));
         } else if (command == "proxy session list") {
             return make_pair(true, strutils::join(session_manager::uniq().status(), "\n"));
+        } else if (command == "proxy tunnel health") {
+            string str;
+            for (const auto &tunnel : st::proxy::config::uniq().tunnels) {
+                int s = tunnel->health_status.load();
+                const char *status_str =
+                    (s == HEALTH_UP) ? "UP" : ((s == HEALTH_DOWN) ? "DOWN" : "UNKNOWN");
+                uint64_t last = tunnel->last_check_time.load();
+                str.append(tunnel->id())
+                        .append("\t")
+                        .append(tunnel->area)
+                        .append("\t")
+                        .append(status_str)
+                        .append("\t")
+                        .append(to_string(tunnel->consecutive_failures.load()))
+                        .append("\t")
+                        .append(to_string(tunnel->last_check_cost.load()))
+                        .append("\t")
+                        .append(last == 0 ? "-" : to_string(time::now() - last))
+                        .append("\t")
+                        .append(tunnel->http_check_url)
+                        .append("\n");
+            }
+            strutils::trim(str);
+            return make_pair(true, str);
         }
         return result;
     };
