@@ -107,6 +107,14 @@ stream_tunnel *config::parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const {
     auto st = new stream_tunnel(type, serverIp, tunnelPort);
     st->area = tunnel.get("area", "");
     st->http_check_url = tunnel.get("http_check_url", "");
+    if (st->http_check_url.empty()) {
+        // CN 或 DIRECT 隧道默认探测 baidu，其他用 google
+        if (st->area == "CN" || st->type == "DIRECT") {
+            st->http_check_url = "https://www.baidu.com";
+        } else {
+            st->http_check_url = "https://www.google.com";
+        }
+    }
     boost::optional<basic_ptree<K, D, C> &> areaListNode = tunnel.get_child_optional("proxy_areas");
     if (areaListNode.is_initialized()) {
         basic_ptree<K, D, C> arealistArr = areaListNode.get();
