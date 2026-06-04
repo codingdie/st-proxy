@@ -3,6 +3,9 @@
 //
 #include "analyzer/net_test_manager.h"
 #include <gtest/gtest.h>
+#include <condition_variable>
+#include <mutex>
+
 TEST(proxy_unit_tests, test_tls_handshake_v2_with_socks) {
     mutex lock;
     lock.lock();
@@ -33,8 +36,23 @@ TEST(proxy_unit_tests, test_ip) {
 TEST(proxy_unit_tests, test_net_test_manager_test_with_socks) {
     st::proxy::config::uniq().load("../confs/test");
     auto tunnel = st::proxy::config::uniq().tunnels[1];
+    std::mutex mutex;
+    std::condition_variable cv;
+    bool finished = false;
+    bool connected = true;
+
     net_test_manager::uniq().tls_handshake_with_socks(
-            tunnel->ip, tunnel->port, "127.0.0.1",
-            [=](bool valid, bool connected, uint32_t cost) { logger::INFO << valid << connected << cost << END; });
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+            tunnel->ip, tunnel->port, "127.0.0.1", [&](bool valid, bool is_connected, uint32_t cost) {
+                logger::INFO << valid << is_connected << cost << END;
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    connected = is_connected;
+                    finished = true;
+                }
+                cv.notify_one();
+            });
+
+    std::unique_lock<std::mutex> lock(mutex);
+    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&]() { return finished; }));
+    ASSERT_FALSE(connected);
 }

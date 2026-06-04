@@ -9,6 +9,7 @@
 #include "common.h"
 #include "socks5_utils.h"
 #include "taskquque/task_queue.h"
+#include <atomic>
 #include <functional>
 #define net_test_callback std::function<void(bool valid, bool connected, uint32_t cost)>
 #define select_tunnels_tesult vector<pair<stream_tunnel *, pair<int, proxy::proto::quality_record>>>
@@ -29,8 +30,10 @@ public:
 class net_test_manager {
 public:
     static net_test_manager &uniq();
+    static net_test_manager *instance_or_null();
     net_test_manager();
     virtual ~net_test_manager();
+    void stop();
     void submit(const st::task::priority_task<test_case> &t);
 
     //https handshake test 443 port
@@ -66,6 +69,7 @@ private:
     uint16_t tls_request_len;
     io_context::work *iw = nullptr;
     thread th;
+    std::atomic_bool stopped{false};
     st::task::queue<test_case> t_queue;
     void do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
     void reset_tls_session_id();

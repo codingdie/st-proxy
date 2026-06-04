@@ -43,14 +43,18 @@ uint16_t session_manager::guess_unused_port() { return random_range(random_engin
 
 void session_manager::schedule_monitor() {
     session_timer.expires_from_now(boost::posix_time::seconds(10));
-    session_timer.async_wait([&](boost::system::error_code ec) {
+    session_timer.async_wait([this](boost::system::error_code ec) {
+        if (ec == boost::asio::error::operation_aborted) {
+            return;
+        }
         this->monitor_session();
         this->schedule_monitor();
     });
 }
 
 session_manager::~session_manager() {
-    session_timer.cancel();
+    boost::system::error_code ec;
+    session_timer.cancel(ec);
     // 先删除 work 对象，让 io_context 自然退出（等待所有 handler 完成）
     delete worker;
     // 等待线程自然结束

@@ -5,6 +5,7 @@
 #ifndef ST_TASK_QUEUE_H
 #define ST_TASK_QUEUE_H
 #include "st.h"
+#include <atomic>
 #include <functional>
 #include <unordered_map>
 #include <utility>
@@ -50,6 +51,7 @@ namespace st {
             thread th;
             boost::asio::deadline_timer generate_key_timer;
             boost::asio::deadline_timer schedule_timer;
+            std::atomic_bool stopped{false};
             std::mutex mutex;
             std::function<void(const st::task::priority_task<input> &)> executor;
             volatile double key_count = 0;
@@ -64,7 +66,10 @@ namespace st {
             void schedule_generate_key() {
                 uint16_t duration = 50;
                 generate_key_timer.expires_from_now(boost::posix_time::milliseconds(duration));
-                generate_key_timer.async_wait([this, duration](error_code ec) {
+                generate_key_timer.async_wait([this, duration](boost::system::error_code ec) {
+                    if (ec == boost::asio::error::operation_aborted) {
+                        return;
+                    }
                     key_count += max_qps * duration / 1000;
                     key_count = min(max_qps * 1.0, (double) key_count);
                     schedule_generate_key();
@@ -89,7 +94,12 @@ namespace st {
                 });
 
                 schedule_timer.expires_from_now(boost::posix_time::milliseconds(50));
-                schedule_timer.async_wait([this](error_code ec) { schedule_dispatch_task(); });
+                schedule_timer.async_wait([this](boost::system::error_code ec) {
+                    if (ec == boost::asio::error::operation_aborted) {
+                        return;
+                    }
+                    schedule_dispatch_task();
+                });
             }
 
         public:
@@ -131,11 +141,19 @@ namespace st {
                 std::lock_guard<std::mutex> lg(mutex);
                 return tasks.size();
             }
-            ~queue() {
+            void stop() {
+                if (stopped.exchange(true)) {
+                    return;
+                }
+                boost::system::error_code ec;
+                generate_key_timer.cancel(ec);
+                schedule_timer.cancel(ec);
                 ic.stop();
                 delete iw;
+                iw = nullptr;
                 th.join();
             }
+            ~queue() { stop(); }
         };
     }// namespace task
 }// namespace st

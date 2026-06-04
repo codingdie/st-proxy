@@ -4,6 +4,7 @@
 #include "nat_utils.h"
 #include "proxy_server.h"
 #include <gtest/gtest.h>
+
 class BaseTest : public ::testing::Test {
 protected:
     proxy_server *proxyServer;

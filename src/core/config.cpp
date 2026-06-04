@@ -7,6 +7,7 @@
 using namespace st::proxy;
 using namespace st::utils;
 void config::load(const string &configPathInput) {
+    unload();
     base_conf_dir = boost::filesystem::absolute(configPathInput).normalize().string();
     string configPath = configPathInput + "/config.json";
     if (st::utils::file::exists(configPath)) {
@@ -49,15 +50,18 @@ void config::load(const string &configPathInput) {
         }
         parse_whitelist_to_ips();
         logger::init(tree);
+        apm_logger::init();
         auto area_ip_config_node = tree.get_child_optional("area_ip_config");
         if (area_ip_config_node.is_initialized()) {
             this->area_ip_config.load(area_ip_config_node.get());
             areaip::manager::uniq().config(this->area_ip_config);
         }
+        areaip::manager::uniq().start();
         auto net_test_config_node = tree.get_child_optional("net_test_config");
         if (net_test_config_node.is_initialized()) {
             this->net_test_config.load(net_test_config_node.get());
         }
+        loaded = true;
     } else {
         logger::INFO << "st-proxy config file not exit!" << configPath << END;
         exit(1);
@@ -160,4 +164,19 @@ void config::parse_whitelist_to_ips() {
         tunnel->ip_whitelist = parse_whitelist_to_ips(tunnel->whitelist);
     }
 }
-config::~config() = default;
+void config::unload() {
+    if (loaded) {
+        areaip::manager::uniq().stop();
+        apm_logger::disable(false);
+        logger::disable();
+    }
+    for (auto *tunnel : tunnels) {
+        delete tunnel;
+    }
+    tunnels.clear();
+    whitelist.clear();
+    ip_whitelist.clear();
+    proxy_target.clear();
+    loaded = false;
+}
+config::~config() { unload(); }

@@ -64,9 +64,14 @@ if(NOT OPENWRT)
     FetchContent_MakeAvailable(googletest)
 
     enable_testing()
-    add_executable(st-unit-test ${SOURCE_ST_UNIT_TEST_FILES} ${SOURCE_COMMON_FILES} ${MESSAGE_PROTO_SRCS} ${KV_PROTO_SRCS})
-    add_executable(st-proxy-unit-test ${SOURCE_UNIT_TEST_FILES} ${SOURCE_FILES} ${SOURCE_COMMON_FILES} ${MESSAGE_PROTO_SRCS} ${KV_PROTO_SRCS})
-    add_executable(st-proxy-integration-test ${SOURCE_INTEGRATION_TEST_FILES} ${SOURCE_FILES} ${SOURCE_COMMON_FILES} ${MESSAGE_PROTO_SRCS} ${KV_PROTO_SRCS})
+    set(SOURCE_TEST_RUNTIME src/test/test_runtime.cpp)
+    add_executable(st-unit-test ${SOURCE_TEST_RUNTIME} ${SOURCE_ST_UNIT_TEST_FILES} ${SOURCE_COMMON_FILES} ${MESSAGE_PROTO_SRCS} ${KV_PROTO_SRCS})
+    add_executable(st-proxy-unit-test ${SOURCE_TEST_RUNTIME} ${SOURCE_UNIT_TEST_FILES} ${SOURCE_FILES} ${SOURCE_COMMON_FILES} ${MESSAGE_PROTO_SRCS} ${KV_PROTO_SRCS})
+    add_executable(st-proxy-integration-test ${SOURCE_TEST_RUNTIME} ${SOURCE_INTEGRATION_TEST_FILES} ${SOURCE_FILES} ${SOURCE_COMMON_FILES} ${MESSAGE_PROTO_SRCS} ${KV_PROTO_SRCS})
+
+    target_compile_definitions(st-unit-test PRIVATE ST_PROXY_TEST_NAT_RULE="${PROJECT_SOURCE_DIR}/confs/test/nat/rule.sh")
+    target_compile_definitions(st-proxy-unit-test PRIVATE ST_PROXY_TEST_NAT_RULE="${PROJECT_SOURCE_DIR}/confs/test/nat/rule.sh" ST_PROXY_HAS_CONFIG)
+    target_compile_definitions(st-proxy-integration-test PRIVATE ST_PROXY_TEST_NAT_RULE="${PROJECT_SOURCE_DIR}/confs/test/nat/rule.sh" ST_PROXY_HAS_CONFIG)
 
     target_link_libraries(st-unit-test gtest_main ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES} ${Protobuf_LITE_LIBRARY})
     target_link_libraries(st-proxy-unit-test gtest_main ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${OTHER_LIBRARIES} ${Protobuf_LITE_LIBRARY})

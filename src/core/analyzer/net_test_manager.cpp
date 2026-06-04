@@ -7,6 +7,11 @@
 #include "config.h"
 #include "nat_utils.h"
 #include <boost/asio/ssl.hpp>
+
+namespace {
+net_test_manager *g_net_test_manager_instance = nullptr;
+}
+
 net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }),
       t_queue("st-proxy-net-test", st::proxy::config::uniq().net_test_config.max_qps,
@@ -22,21 +27,33 @@ net_test_manager::net_test_manager()
                       }
                   });
               }) {
+    g_net_test_manager_instance = this;
     for (byte &i : test_request) {
         i = 0b00000000;
     }
     tls_request = new byte[1024];
     tls_request_len = st::utils::base64::decode(TLS_REQUEST_BASE64, tls_request);
 }
-net_test_manager::~net_test_manager() {
+void net_test_manager::stop() {
+    if (stopped.exchange(true)) {
+        return;
+    }
     if (health_check_timer != nullptr) {
         boost::system::error_code ec;
         health_check_timer->cancel(ec);
     }
+    t_queue.stop();
     ic.stop();
     delete iw;
-    th.join();
-    delete tls_request;
+    iw = nullptr;
+    if (th.joinable()) {
+        th.join();
+    }
+}
+net_test_manager::~net_test_manager() {
+    stop();
+    g_net_test_manager_instance = nullptr;
+    delete[] tls_request;
     delete health_check_timer;
     health_check_timer = nullptr;
 }
@@ -44,6 +61,7 @@ net_test_manager &net_test_manager::uniq() {
     static net_test_manager instance;
     return instance;
 }
+net_test_manager *net_test_manager::instance_or_null() { return g_net_test_manager_instance; }
 void net_test_manager::tls_handshake_with_socks(const std::string &socks_ip, uint32_t socks_port,
                                                 const std::string &test_ip, const net_test_callback &callback) {
     uint32_t begin = time::now();

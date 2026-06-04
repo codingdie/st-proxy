@@ -81,7 +81,7 @@ namespace st {
         class apm_logger {
         public:
             static void init();
-            static void disable();
+            static void disable(bool report_status_log = true);
             static void perf(const string &name, unordered_map<string, string> &&dimensions, uint64_t cost,
                              uint64_t count, uint64_t sample);
             static void perf(const string &name, unordered_map<string, string> &&dimensions,
@@ -107,9 +107,12 @@ namespace st {
             static boost::asio::deadline_timer LOG_TIMER;
             static boost::asio::io_context IO_CONTEXT;
             static std::mutex APM_LOCK;
+            static std::mutex APM_STATE_LOCK;
             static boost::asio::io_context::work *IO_CONTEXT_WORK;
             static std::vector<std::thread *> LOG_THREADS;
-            static void schedule_log();
+            static std::atomic<uint64_t> LIFECYCLE_ID;
+            static std::atomic_bool INITED;
+            static void schedule_log(uint64_t lifecycle_id);
             static void accumulate_metric(unordered_map<string, uint64_t> &metric, uint64_t value, uint64_t sample);
 
             boost::property_tree::ptree dimensions;
@@ -117,7 +120,7 @@ namespace st {
             uint64_t start_time;
             uint64_t last_step_time;
             static bool is_sample(uint64_t sample);
-            static void report_apm_log_local();
+            static void report_apm_log_local(bool report_status_log = true);
         };
     }// namespace utils
 }// namespace st

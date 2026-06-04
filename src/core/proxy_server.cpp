@@ -93,7 +93,10 @@ void proxy_server::start() {
 }
 void proxy_server::shutdown() {
     this->state = 2;
-    schedule_timer->cancel();
+    if (schedule_timer != nullptr) {
+        boost::system::error_code ec;
+        schedule_timer->cancel(ec);
+    }
     for (boost::asio::io_context *ioContext : worker_ctxs) {
         ioContext->stop();
     }
@@ -129,8 +132,14 @@ void proxy_server::accept(io_context *context, tcp::acceptor *acceptor) {
 }
 
 void proxy_server::schedule() {
+    if (schedule_timer == nullptr || state.load() == 2) {
+        return;
+    }
     schedule_timer->expires_from_now(boost::posix_time::seconds(60));
-    schedule_timer->async_wait([&](boost::system::error_code ec) {
+    schedule_timer->async_wait([this](boost::system::error_code ec) {
+        if (ec == boost::asio::error::operation_aborted || state.load() == 2 || schedule_timer == nullptr) {
+            return;
+        }
         config::uniq().parse_whitelist_to_ips();
         nat_utils::uniq().add_nat_whitelist();
         this->schedule();

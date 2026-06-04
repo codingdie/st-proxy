@@ -55,10 +55,12 @@ namespace st {
             virtual ~config();
             static config &uniq();
             void load(const string &configPathInput);
+            void unload();
             vector<uint32_t> resolve_domain(const string &domain) const;
             void parse_whitelist_to_ips();
 
         private:
+            bool loaded = false;
             set<uint32_t> parse_whitelist_to_ips(const set<string> &domains) const;
             template<class K, class D, class C>
             stream_tunnel *parse_stream_tunnel(basic_ptree<K, D, C> &tunnel) const;
