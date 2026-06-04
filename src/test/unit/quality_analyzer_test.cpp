@@ -60,6 +60,18 @@ TEST(proxy_unit_tests, test_quality_analyzer_async) {
     delete tunnel;
 }
 
+TEST(proxy_unit_tests, test_blacklist_expire_uses_minutes) {
+    const uint32_t distIp = st::utils::ipv4::str_to_ip("203.0.113.10");
+    quality_analyzer::uniq().remove_from_blacklist(distIp);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    quality_analyzer::uniq().add_to_blacklist(distIp);
+    std::this_thread::sleep_for(std::chrono::seconds(11));
+
+    ASSERT_TRUE(quality_analyzer::uniq().is_in_blacklist(distIp));
+    quality_analyzer::uniq().remove_from_blacklist(distIp);
+}
+
 
 TEST(proxy_unit_tests, test_quality_analyzer_speed) {
     auto tunnel = new stream_tunnel("SOCKS", "192.168.31.20", 1080);

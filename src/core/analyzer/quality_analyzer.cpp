@@ -365,7 +365,7 @@ void quality_analyzer::add_to_blacklist(uint32_t ip) {
     execute([=]() {
         string key = st::utils::ipv4::ip_to_str(ip);
         string value = std::to_string(st::utils::time::now());
-        blacklist_db.put(key, value, IP_BLACKLIST_EXPIRE_MINUTES);
+        blacklist_db.put(key, value, IP_BLACKLIST_EXPIRE_MINUTES * 60);
         logger::WARN << "IP" << st::utils::ipv4::ip_to_str(ip) << "added to blacklist for" << IP_BLACKLIST_EXPIRE_MINUTES << "minutes" << END;
     });
 }
