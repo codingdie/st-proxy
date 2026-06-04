@@ -61,6 +61,9 @@ ctest
 # Note: Tests are disabled in OpenWrt builds
 ```
 
+**Important**: Integration tests must be run as root. The integration test installs iptables/ipset NAT rules and
+st-proxy uses `SO_MARK` to prevent its own outbound connections from being redirected back into the proxy.
+
 ```bash
 # Direct run (searches default config paths)
 st-proxy
