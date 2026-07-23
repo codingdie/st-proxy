@@ -311,11 +311,13 @@ void net_test_manager::run_health_check_round() {
                         tunnel->health_status.store(HEALTH_UP);
                         logger::INFO << "tunnel" << tunnel->id() << "health UP success"
                                      << successes << "/" << TUNNEL_HEALTH_CHECKS_PER_ROUND
-                                     << " avg_cost" << avg_cost << END;
+                                     << " avg_cost" << avg_cost
+                                     << " url" << tunnel->http_check_url << END;
                     } else {
                         tunnel->health_status.store(HEALTH_DOWN);
                         logger::WARN << "tunnel" << tunnel->id() << "health DOWN success"
-                                     << successes << "/" << TUNNEL_HEALTH_CHECKS_PER_ROUND << END;
+                                     << successes << "/" << TUNNEL_HEALTH_CHECKS_PER_ROUND
+                                     << " url" << tunnel->http_check_url << END;
                     }
                 }
             });
