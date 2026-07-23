@@ -12,6 +12,10 @@ namespace {
 net_test_manager *g_net_test_manager_instance = nullptr;
 }
 
+constexpr uint32_t net_test_manager::TUNNEL_HEALTH_CHECK_INTERVAL_MS;
+constexpr uint32_t net_test_manager::TUNNEL_HEALTH_CHECKS_PER_ROUND;
+constexpr uint32_t net_test_manager::TUNNEL_HEALTH_SUCCESS_THRESHOLD;
+
 net_test_manager::net_test_manager()
     : ic(), iw(new io_context::work(ic)), th([this]() { ic.run(); }),
       t_queue("st-proxy-net-test", st::proxy::config::uniq().net_test_config.max_qps,
@@ -283,26 +287,39 @@ void net_test_manager::check_tunnel_health(stream_tunnel *tunnel,
 void net_test_manager::run_health_check_round() {
     auto &tunnels = st::proxy::config::uniq().tunnels;
     for (auto *tunnel : tunnels) {
-        check_tunnel_health(tunnel, [tunnel](bool valid, uint32_t cost) {
-            tunnel->last_check_time.store(time::now());
-            tunnel->last_check_cost.store(cost);
-            if (valid) {
-                tunnel->consecutive_failures.store(0);
-                if (tunnel->health_status.load() != HEALTH_UP) {
-                    logger::INFO << "tunnel" << tunnel->id() << "health UP cost" << cost << END;
+        auto success_count = std::make_shared<std::atomic<int>>(0);
+        auto total_cost = std::make_shared<std::atomic<uint32_t>>(0);
+        auto completed = std::make_shared<std::atomic<int>>(0);
+
+        for (int i = 0; i < TUNNEL_HEALTH_CHECKS_PER_ROUND; i++) {
+            check_tunnel_health(tunnel, [tunnel, success_count, total_cost, completed](bool valid, uint32_t cost) {
+                if (valid) {
+                    success_count->fetch_add(1);
                 }
-                tunnel->health_status.store(HEALTH_UP);
-            } else {
-                uint32_t failures = tunnel->consecutive_failures.fetch_add(1) + 1;
-                if (failures >= TUNNEL_HEALTH_DOWN_THRESHOLD) {
-                    if (tunnel->health_status.load() != HEALTH_DOWN) {
-                        logger::WARN << "tunnel" << tunnel->id() << "health DOWN after"
-                                     << failures << "consecutive failures" << END;
+                total_cost->fetch_add(cost);
+                int done = completed->fetch_add(1) + 1;
+
+                if (done == TUNNEL_HEALTH_CHECKS_PER_ROUND) {
+                    int successes = success_count->load();
+                    uint32_t avg_cost = total_cost->load() / TUNNEL_HEALTH_CHECKS_PER_ROUND;
+
+                    tunnel->last_check_time.store(time::now());
+                    tunnel->last_check_cost.store(avg_cost);
+                    tunnel->last_success_count.store(successes);
+
+                    if (successes >= TUNNEL_HEALTH_SUCCESS_THRESHOLD) {
+                        tunnel->health_status.store(HEALTH_UP);
+                        logger::INFO << "tunnel" << tunnel->id() << "health UP success"
+                                     << successes << "/" << TUNNEL_HEALTH_CHECKS_PER_ROUND
+                                     << " avg_cost" << avg_cost << END;
+                    } else {
+                        tunnel->health_status.store(HEALTH_DOWN);
+                        logger::WARN << "tunnel" << tunnel->id() << "health DOWN success"
+                                     << successes << "/" << TUNNEL_HEALTH_CHECKS_PER_ROUND << END;
                     }
-                    tunnel->health_status.store(HEALTH_DOWN);
                 }
-            }
-        });
+            });
+        }
     }
 }
 

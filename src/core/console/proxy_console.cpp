@@ -105,7 +105,7 @@ void proxy_console::start() {
                         .append("\t")
                         .append(status_str)
                         .append("\t")
-                        .append(to_string(tunnel->consecutive_failures.load()))
+                        .append(to_string(tunnel->last_success_count.load()))
                         .append("\t")
                         .append(to_string(tunnel->last_check_cost.load()))
                         .append("\t")

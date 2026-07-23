@@ -30,7 +30,7 @@ public:
 
     // 健康检查相关
     std::atomic<tunnel_health_status> health_status{HEALTH_UNKNOWN};
-    std::atomic<uint32_t> consecutive_failures{0};
+    std::atomic<uint32_t> last_success_count{0};  // 最近一轮成功次数 (0-3)
     std::atomic<uint64_t> last_check_time{0};
     std::atomic<uint32_t> last_check_cost{0};
 

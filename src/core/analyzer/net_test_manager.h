@@ -74,9 +74,9 @@ private:
     void do_test(socks5_proxy proxy, uint32_t dist_ip, uint16_t port, const net_test_callback &callback);
     void reset_tls_session_id();
 
-    static constexpr uint32_t TUNNEL_HEALTH_CHECK_INTERVAL_MS = 30000;
-    static constexpr uint32_t TUNNEL_HEALTH_CHECK_TIMEOUT_MS = 5000;
-    static constexpr uint32_t TUNNEL_HEALTH_DOWN_THRESHOLD = 2;
+    static constexpr uint32_t TUNNEL_HEALTH_CHECK_INTERVAL_MS = 300000;
+    static constexpr uint32_t TUNNEL_HEALTH_CHECKS_PER_ROUND = 3;
+    static constexpr uint32_t TUNNEL_HEALTH_SUCCESS_THRESHOLD = 2;
     boost::asio::deadline_timer *health_check_timer = nullptr;
     void schedule_health_check();
     void run_health_check_round();
