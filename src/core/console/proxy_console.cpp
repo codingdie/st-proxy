@@ -163,6 +163,9 @@ string proxy_console::analyse_tunnel() {
             }
         }
         int64_t expire_minutes = quality_analyzer::get_min_expire_minutes(record);
+        uint64_t last_ck = tunnel->last_check_time.load();
+        string last_check_ago = last_ck == 0 ? "-" : to_string((time::now() - last_ck) / 1000) + "s";
+        string health_result = last_ck == 0 ? "-" : (tunnel->is_up() ? "UP " + to_string(tunnel->last_success_count.load()) + "/3" : "DOWN " + to_string(tunnel->last_success_count.load()) + "/3");
         str.append(tunnel->id())
                 .append("\t")
                 .append(tunnel->area)
@@ -176,6 +179,10 @@ string proxy_console::analyse_tunnel() {
                 .append(join(failed_ips, ","))
                 .append("\t")
                 .append(expire_minutes >= 0 ? to_string(expire_minutes) : "-")
+                .append("\t")
+                .append(last_check_ago)
+                .append("\t")
+                .append(health_result)
                 .append("\n");
     }
     strutils::trim(str);
