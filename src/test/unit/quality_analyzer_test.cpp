@@ -6,6 +6,7 @@
 #include "st.h"
 #include "utils/shm/proxy_shm.h"
 #include <gtest/gtest.h>
+#include <sstream>
 //TEST(proxy_unit_tests, test_quality_analyzer_forbid) {
 //    st::proxy::config::uniq().load("../confs/test");
 //    auto tunnel = st::proxy::config::uniq().tunnels[1];
@@ -70,6 +71,18 @@ TEST(proxy_unit_tests, test_blacklist_expire_uses_minutes) {
 
     ASSERT_TRUE(quality_analyzer::uniq().is_in_blacklist(distIp));
     quality_analyzer::uniq().remove_from_blacklist(distIp);
+}
+
+TEST(proxy_unit_tests, remove_missing_blacklist_ip_does_not_log_removed) {
+    const uint32_t distIp = st::utils::ipv4::str_to_ip("203.0.113.250");
+
+    std::ostringstream output;
+    auto *old_buf = std::cout.rdbuf(output.rdbuf());
+    quality_analyzer::uniq().remove_from_blacklist(distIp);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout.rdbuf(old_buf);
+
+    ASSERT_EQ(output.str().find("removed from blacklist"), std::string::npos);
 }
 
 

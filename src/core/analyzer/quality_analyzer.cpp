@@ -364,9 +364,16 @@ void quality_analyzer::try_analyze(uint32_t dist_ip, uint16_t port, const select
 void quality_analyzer::add_to_blacklist(uint32_t ip) {
     execute([=]() {
         string key = st::utils::ipv4::ip_to_str(ip);
+        bool already_in_blacklist = !blacklist_db.get(key).empty();
         string value = std::to_string(st::utils::time::now());
         blacklist_db.put(key, value, IP_BLACKLIST_EXPIRE_MINUTES * 60);
-        logger::WARN << "IP" << st::utils::ipv4::ip_to_str(ip) << "added to blacklist for" << IP_BLACKLIST_EXPIRE_MINUTES << "minutes" << END;
+        if (already_in_blacklist) {
+            logger::DEBUG << "IP" << st::utils::ipv4::ip_to_str(ip) << "blacklist ttl refreshed for"
+                          << IP_BLACKLIST_EXPIRE_MINUTES << "minutes" << END;
+        } else {
+            logger::WARN << "IP" << st::utils::ipv4::ip_to_str(ip) << "added to blacklist for"
+                         << IP_BLACKLIST_EXPIRE_MINUTES << "minutes" << END;
+        }
     });
 }
 
@@ -379,6 +386,9 @@ bool quality_analyzer::is_in_blacklist(uint32_t ip) {
 void quality_analyzer::remove_from_blacklist(uint32_t ip) {
     execute([=]() {
         string key = st::utils::ipv4::ip_to_str(ip);
+        if (blacklist_db.get(key).empty()) {
+            return;
+        }
         blacklist_db.erase(key);
         logger::INFO << "IP" << st::utils::ipv4::ip_to_str(ip) << "removed from blacklist" << END;
     });
