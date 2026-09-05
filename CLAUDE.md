@@ -52,9 +52,16 @@ make st-common-proto
 ### Running Tests
 
 ```bash
-# Build and run all tests (tests only build when OPENWRT=OFF)
+# Build and run all tests (tests only build when OPENWRT=OFF). Unit tests run
+# in parallel; integration tests begin only after every unit test has finished.
 cd build
-ctest
+ctest --output-on-failure -j8
+
+# 外部链路冒烟测试（访问公网及配置的 SOCKS 服务，不属于默认测试）
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DST_PROXY_ENABLE_EXTERNAL_TESTS=ON
+cmake --build build
+cd build
+sudo -n ctest --output-on-failure -j1 -L external
 
 # Run specific test executables
 ./st-unit-test           # Common utilities tests

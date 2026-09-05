@@ -19,10 +19,9 @@ TEST(proxy_unit_tests, test_tls_handshake_v2_with_socks) {
 }
 
 TEST(proxy_unit_tests, test_ip) {
-    st::utils::shell::exec("rm -rf /var/lib/st/kv/st-proxy-quality");
     st::proxy::config::uniq().load("../confs/test");
 
-    quality_analyzer::uniq().delete_all_record();
+    quality_analyzer::uniq().clear();
     uint32_t distIp = st::utils::ipv4::str_to_ip("18.65.168.167");
     auto select_result = quality_analyzer::uniq().select_tunnels(distIp, 443, {}, "");
     std::this_thread::sleep_for(std::chrono::seconds(5));

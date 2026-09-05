@@ -7,19 +7,6 @@
 #include "utils/shm/proxy_shm.h"
 #include <gtest/gtest.h>
 #include <sstream>
-//TEST(proxy_unit_tests, test_quality_analyzer_forbid) {
-//    st::proxy::config::uniq().load("../confs/test");
-//    auto tunnel = st::proxy::config::uniq().tunnels[1];
-//    int dist_ip = 3;
-//    auto old_record = quality_analyzer::uniq().get_tunnel_record(dist_ip, tunnel);
-//    for (auto i = 0; i < st::proxy::config::uniq().tunnels.size(); i++) {
-//        quality_analyzer::uniq().record_failed(dist_ip, tunnel);
-//    }
-//
-//    ASSERT_TRUE(st::proxy::shm::uniq().is_ip_forbid(dist_ip));
-//    quality_analyzer::uniq().record_first_package_success(dist_ip, tunnel, 30);
-//    ASSERT_FALSE(st::proxy::shm::uniq().is_ip_forbid(dist_ip));
-//}
 
 TEST(proxy_unit_tests, test_quality_analyzer) {
     st::proxy::config::uniq().load("../confs/test");

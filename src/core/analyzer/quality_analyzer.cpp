@@ -8,6 +8,18 @@
 #include "leveldb/cache.h"
 #include "net_test_manager.h"
 #include "utils/shm/proxy_shm.h"
+#include <cstdlib>
+
+namespace {
+string quality_analyzer_db_prefix() {
+    const char *configured_prefix = std::getenv("ST_PROXY_DB_PREFIX");
+    if (configured_prefix != nullptr && configured_prefix[0] != '\0') {
+        return configured_prefix;
+    }
+    return "st-proxy";
+}
+} // namespace
+
 using namespace st::proxy::proto;
 constexpr uint32_t quality_analyzer::IP_BLACKLIST_EXPIRE_MINUTES;
 quality_analyzer &quality_analyzer::uniq() {
@@ -194,7 +206,8 @@ quality_analyzer::~quality_analyzer() {
     delete th;
 };
 quality_analyzer::quality_analyzer()
-    : db("st-proxy-quality", 4 * 1024 * 1204), blacklist_db("st-proxy-blacklist", 100 * 1024), ic(), worker(new boost::asio::io_context::work(ic)),
+    : db(quality_analyzer_db_prefix() + "-quality", 4 * 1024 * 1204),
+      blacklist_db(quality_analyzer_db_prefix() + "-blacklist", 100 * 1024), ic(), worker(new boost::asio::io_context::work(ic)),
       th(new thread([this]() { ic.run(); })) {
     uint32_t ip_count = 0;
     uint32_t record_count = 0;
