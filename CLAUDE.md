@@ -220,6 +220,11 @@ This project is designed to build for OpenWrt. The CMakeLists.txt includes speci
 
 The project is packaged in the codingdie-packages feed for OpenWrt.
 
+### 软件包版本
+
+- 修改 OpenWrt 插件代码时，不要自动修改 `PKG_VERSION` 或 `PKG_RELEASE`。
+- 只有用户明确要求升级、调整或发布软件包版本时，才能修改这两个字段。
+
 ## Key Implementation Details
 
 ### Protobuf Usage
